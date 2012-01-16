@@ -12,7 +12,11 @@
 #ifndef IRremoteint_h
 #define IRremoteint_h
 
-#include <WProgram.h>
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
 
 
 extern uint8_t lcd_in_use_flag;    // mutex flag: we are not allowed to 'do anything' if the lcd is currently in use

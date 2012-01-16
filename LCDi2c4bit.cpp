@@ -6,8 +6,11 @@
 #include <stdio.h>
 #include "mcp23xx.h"
 
-
-#include "WConstants.h"  //all things wiring / arduino
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WConstants.h"
+#endif
 
 extern uint8_t lcd_in_use_flag;
 extern MCP23XX lcd_mcp;
@@ -150,10 +153,14 @@ LCDI2C4Bit::print( char value[] )
 }
 
 void 
-LCDI2C4Bit::printL( char value[], int line ) 
+LCDI2C4Bit::printL( char value[], uint8_t chars ) 
 {
+   uint8_t l = strlen(value);
   for ( char *p = value; *p != 0; p++ ) {
     write(*p);
+  }
+  for (l; l < chars; l++){
+    write(' ');
   }
 }
 

@@ -1,7 +1,11 @@
 #include <Wire.h>
 #include <EEPROM.h> 
-#include <WProgram.h>
-#include <DS1302.h>
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
+#include <DS1302.h> //from http://www.henningkarlsen.com/electronics/library.php?id=5
 #include "LCDi2c4bit.h"
 #include "mcp23xx.h"
 #include "Doser.h"
@@ -133,10 +137,7 @@ void setup()
   irrecv.enableIRIn();
  
 
-  // Set the clock to run-mode, and disable the write protection
-  //  rtc.halt(false);
-  //  rtc.writeProtect(false);
-
+ 
   // Setup Serial connection
   //start LCD
   lcd.init();
@@ -144,10 +145,13 @@ void setup()
   lcd.backLight(255);
 
 
-  // The following lines can be commented out to use the values already stored in the DS1302
-  //  rtc.setDOW(TUESDAY);        // Set Day-of-Week to FRIDAY
-  //  rtc.setTime(22, 17, 30);     // Set the time to 12:00:00 (24hr format)
-  //  rtc.setDate(22, 11, 2011);   // Set the date to August 6th, 2010
+ // Set the clock to run-mode, and disable the write protection
+//    rtc.halt(false);
+//    rtc.writeProtect(false);
+//  // The following lines can be commented out to use the values already stored in the DS1302
+//    rtc.setDOW(WEDNESDAY);        // Set Day-of-Week to FRIDAY
+//    rtc.setTime(22, 58, 00);     // Set the time to 12:00:00 (24hr format)
+//    rtc.setDate(11, 01, 2012);   // Set the date to August 6th, 2010
   rtc.setTCR(TCR_D1R2K);
   if (digitalRead(CONFIG_PIN) == LOW){
     enter_setup_mode();
@@ -180,6 +184,8 @@ void loop()
   }
     show_menu();
     
+  }else if (global_mode == 3){
+    set_time();
   }else{//we're home
     
   }
@@ -200,14 +206,23 @@ if (global_mode == 0){
   //  lcd.print("  ");
   analogWrite(pumps[psecond%5],val[psecond%2]);
 }
+if (global_mode!=3){
   update_clock(3,0);
+}
 }
 
 void update_clock(uint8_t x, uint8_t y){
   lcd.cursorTo(x,y);
   lcd.print(rtc.getTimeStr());
-  lcd.print("  ");
+  if (global_mode == 3){
+    lcd.print(" ");
+  }else{
+    lcd.print("  ");
+  }
   lcd.print(rtc.getDateStr());
+  if (global_mode == 3){
+    lcd.print(rtc.getTime().dow);
+  }
 }
 
 void update_pump(uint8_t pump, uint8_t val){
@@ -224,7 +239,6 @@ void update_pump(uint8_t pump, uint8_t val){
   lcd.print(":");
   lcd.print(val);
   lcd.print("  ");
-  //      lcd.print(tmpStr);
 }
 
 void enter_setup_mode( void )  {
@@ -396,6 +410,13 @@ void set_time( void ){
   }
   // key = OK
   if (key == ir_keypress_mapping[IFC_OK].key_hex ) {
+     // Set the clock to run-mode, and disable the write protection
+    rtc.halt(false);
+    rtc.writeProtect(false);
+  // The following lines can be commented out to use the values already stored in the DS1302
+    rtc.setDOW(tdw);        // Set Day-of-Week to FRIDAY
+    rtc.setTime(th, tmi, ts);     // Set the time to 12:00:00 (24hr format)
+    rtc.setDate(tdm, tmo, ty);   // Set the date to August 6th, 2010
     //    RTC.setDate(ts, tmi, th, tdw, tdm, tmo, ty);
     global_mode = 0;
     lcd.clear();
@@ -461,8 +482,8 @@ void set_time( void ){
       }
     }
     delay (100);
-    sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
-    update_clock(3,0);   
+    sprintf(strTime,"%02d:%02d:%02d %02d.%02d.%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
+//    update_clock(3,0);   
   }
 
 
@@ -527,7 +548,7 @@ void set_time( void ){
     }
     delay (100);
     sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
-    update_clock(2,0);   
+    update_clock(3,0);   
   }
 
 
@@ -630,6 +651,7 @@ void show_menu( void ) {
 
   if (key == ir_keypress_mapping[IFC_OK].key_hex ) {
     Serial.println("OK");
+    menu.use();
     
   }
   else if (key == ir_keypress_mapping[IFC_DOWN].key_hex){
@@ -671,6 +693,7 @@ void show_menu( void ) {
 
 }
 
+
 /*
 	This is an important function
 	Here all use events are handled
@@ -679,12 +702,25 @@ void show_menu( void ) {
 */
 void menuUseEvent(MenuUseEvent used)
 {
-//	Serial.print("Menu use ");
-//	Serial.println(used.item.getName());
 //	if (used.item == setDelay) //comparison agains a known item
 //	{
 //		Serial.println("menuUseEvent found Dealy (D)");
 //	}
+
+    if (used.item == mi_clock){
+            global_mode=3;
+      Serial.println("Yes, item is clock");
+      lcd.clear();
+      update_clock(2,0);   
+      lcd.send_string("Use arrows to adjust", LCD_CURS_POS_L2_HOME);
+      lcd.send_string("HH:MM:SS DD.MM.YY DW",LCD_CURS_POS_L4_HOME);
+
+      set_time();
+    }else{
+      lcd.cursorTo(2,0);
+      lcd.print("Used ");
+      lcd.printL((char*)used.item.getName(), 15);
+    }
 }
 
 /*
@@ -698,24 +734,18 @@ void menuChangeEvent(MenuChangeEvent changed)
   Serial.print(changed.from.getName());
   Serial.print("->");
   Serial.println(changed.to.getName());
-  uint8_t l = strlen((char*)changed.to.getName());
+
   if (global_mode == 1){
     if (changed.to.getLeft() == 0){
       lcd.clear_L2();
       lcd.cursorTo(0,0);
-      lcd.print((char*)changed.to.getName());
-      for (l; l < 20; l++){
-        lcd.print(" ");
-      }
+      lcd.printL((char*)changed.to.getName(), 20);
     }else{ 
 //      lcd.cursorTo(1,0);
 //      lcd.print("   >                ");
       lcd.cursorTo(1,3);
       lcd.print("> ");
-      lcd.print((char*)changed.to.getName());
-      for (l; l < 15; l++){
-        lcd.print(" ");
-      }
+      lcd.printL((char*)changed.to.getName(), 15);
     }
   }
 }

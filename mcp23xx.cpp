@@ -27,7 +27,11 @@
 #include <stdio.h>       //not needed yet
 #include <string.h>      //needed for strlen()
 #include <inttypes.h>
-#include "WConstants.h"  //all things wiring / arduino
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WConstants.h"
+#endif
 
 
 // ctor
@@ -55,9 +59,13 @@ MCP23XX::set( uint8_t reg, uint8_t val )
 {
   
   Wire.beginTransmission(my_dev_addr);
-  
+#if defined(ARDUINO) && ARDUINO >= 100
+  Wire.write(reg);
+  Wire.write(val);
+#else
   Wire.send(reg);
   Wire.send(val);
+#endif
 
   Wire.endTransmission();
 }
@@ -72,13 +80,23 @@ MCP23XX::get( uint8_t reg )
 
 
   Wire.beginTransmission(my_dev_addr);
+#if defined(ARDUINO) && ARDUINO >= 100
+  Wire.write(reg);
+#else
   Wire.send(reg);
+#endif  
+
   Wire.endTransmission();
 
 
   val = Wire.requestFrom((uint8_t)my_dev_addr, (uint8_t)1);  // read 1 byte
   if (Wire.available()) {
+#if defined(ARDUINO) && ARDUINO >= 100
+    val = Wire.read();
+#else
     val = Wire.receive();
+#endif
+    
   }
 
   return val;
