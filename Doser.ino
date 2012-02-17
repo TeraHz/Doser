@@ -253,26 +253,6 @@ void update_clock(uint8_t x, uint8_t y){
 }
 
 
-/**************************************/
-/****** SET PUMP pump TO PWM val ******/
-/**************************************/
-void update_pump(uint8_t pump, uint8_t val){
-  //      pinMode(pumps[pump], val);
-  //      char tmpStr[5];
-  //      sprintf(tmpStr,"%d:%03d ",pump+1, val);
-  if (pump*7 < 20){
-    lcd.cursorTo(0,pump*7);
-  }
-  else{
-    lcd.cursorTo(1,(pump-3)*7+4);
-  }
-  lcd.print(pump+1);
-  lcd.print(":");
-  lcd.print(val);
-  lcd.print("  ");
-}
-
-
 /********************************/
 /****** INITIAL SETUP MODE ******/
 /********************************/
@@ -435,6 +415,27 @@ long get_input_key( void ) {
     return 0;   // no key pressed
   }
 }
+
+
+/**************************************/
+/****** SET PUMP pump TO PWM val ******/
+/**************************************/
+void update_pump(uint8_t pump, uint8_t val){
+  //      pinMode(pumps[pump], val);
+  //      char tmpStr[5];
+  //      sprintf(tmpStr,"%d:%03d ",pump+1, val);
+  if (pump*7 < 20){
+    lcd.cursorTo(0,pump*7);
+  }
+  else{
+    lcd.cursorTo(1,(pump-3)*7+4);
+  }
+  lcd.print(pump+1);
+  lcd.print(":");
+  lcd.print(val);
+  lcd.print("  ");
+}
+
 
 /**********************/
 /****** SET PUMP ******/
