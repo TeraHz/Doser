@@ -110,6 +110,8 @@ MenuItem mi_pump5 = MenuItem("Pump 5");
 MenuItem mi_pump5_review = MenuItem("Review");
 MenuItem mi_pump5_set = MenuItem("Set");
 MenuItem mi_pump5_calibrate = MenuItem("Calibrate");
+MenuItem mi_ATO = MenuItem("ATO");
+MenuItem mi_ATO_set = MenuItem("Set timeot");
 
 
 IRrecv irrecv(IR_PIN);
@@ -403,6 +405,31 @@ long  get_IR_key( void ) {
   }
 }
 
+/**********************/
+/****** SET PUMP ******/
+/**********************/
+void set_pump(uint8_t pump){
+  
+}
+
+/****************************/
+/****** CALIBRATE PUMP ******/
+/****************************/
+void cal_pump(uint8_t pump){
+  
+}
+
+/*************************/
+/****** REVIEW PUMP ******/
+/*************************/
+void review  _pump(uint8_t pump){
+  
+}
+
+
+/**************************/
+/****** SET THE TIME ******/
+/**************************/
 void set_time( void ){
   key = get_input_key();
   if (key == 0) {
@@ -716,10 +743,26 @@ void menuUseEvent(MenuUseEvent used)
       lcd.send_string("HH:MM:SS DD.MM.YY DW",LCD_CURS_POS_L4_HOME);
 
       set_time();
-    }else{
-      lcd.cursorTo(2,0);
-      lcd.print("Used ");
-      lcd.printL((char*)used.item.getName(), 15);
+    }else if(used.item == mi_pump1_set){
+    }else if(used.item == mi_pump2_set){
+    }else if(used.item == mi_pump3_set){
+    }else if(used.item == mi_pump4_set){
+    }else if(used.item == mi_pump5_set){
+    }else if(used.item == mi_pump1_calibrate){
+    }else if(used.item == mi_pump2_calibrate){
+    }else if(used.item == mi_pump3_calibrate){
+    }else if(used.item == mi_pump4_calibrate){
+    }else if(used.item == mi_pump5_calibrate){
+    }else if(used.item == mi_pump1_review || used.item == mi_pump1){
+    }else if(used.item == mi_pump2_review || used.item == mi_pump2){
+    }else if(used.item == mi_pump3_review || used.item == mi_pump3){
+    }else if(used.item == mi_pump4_review || used.item == mi_pump4){
+    }else if(used.item == mi_pump5_review || used.item == mi_pump5){
+    }else if(used.item == mi_ATO_set){
+    }else {
+//      lcd.cursorTo(2,0);
+//      lcd.print("Used ");
+//      lcd.printL((char*)used.item.getName(), 15);
     }
 }
 
@@ -757,7 +800,7 @@ void menuSetup()
   menu.getRoot().add(settings);
   //setup the settings menu item
   settings.addBefore(mi_pump1);
-  settings.addAfter(mi_pump5);
+  settings.addAfter(mi_ATO);
   settings.addRight(mi_clock);
       mi_clock.addBefore(mi_sleep);
       mi_clock.addAfter(mi_sleep);
@@ -812,7 +855,7 @@ void menuSetup()
     mi_pump4_calibrate.addAfter(mi_pump4_set);
     mi_pump4_calibrate.addBefore(mi_pump4_review);
     mi_pump4_calibrate.addLeft(mi_pump4);
-  mi_pump5.addBefore(settings);
+  mi_pump5.addBefore(mi_ATO);
   mi_pump5.addAfter(mi_pump4);
   mi_pump5.addRight(mi_pump5_review);
     mi_pump5_review.addBefore(mi_pump5_set);
@@ -824,6 +867,10 @@ void menuSetup()
     mi_pump5_calibrate.addAfter(mi_pump5_set);
     mi_pump5_calibrate.addBefore(mi_pump5_review);
     mi_pump5_calibrate.addLeft(mi_pump5);
+  mi_ATO.addBefore(settings);
+  mi_ATO.addAfter(mi_pump5);
+  mi_ATO.addRight(mi_ATO_set);
+    mi_ATO_set.addLeft(mi_ATO);
     
   menu.moveDown();
 }
