@@ -12,13 +12,16 @@
 #include "IRremote.h"
 #include "MenuBackend.h"
 
-DS1302 rtc(13, 7, 2);              // Init the DS1302 
-#define PWM_BACKLIGHT_PIN      9     // pwm-controlled LED backlight
-#define CONFIG_PIN      8     // pwm-controlled LED backlight
-#define IR_PIN                 12    // Sensor data-out pin, wired direct
+#define PWM_BACKLIGHT_PIN      9  // pwm-controlled LED backlight
+#define CONFIG_PIN             8  // pwm-controlled LED backlight
+#define IR_PIN                12  // Sensor data-out pin, wired direct
+#define ATO_FS1               15  // Analog 1 - float switch 1
+#define ATO_FS2               16  // Analog 2 - float switch 2
+#define ATO_FS3               17  // Analog 3 - float switch 3
+#define ATO_RELAY              4  // Digital 4 - 5V relay for pump
 
 // has to be the last entry in this list
-#define IFC_KEY_SENTINEL            7   // this must always be the last in the list
+#define IFC_KEY_SENTINEL       7  // this must always be the last in the list
 #define MAX_FUNCTS                  IFC_KEY_SENTINEL
 
 /*
@@ -27,31 +30,31 @@ DS1302 rtc(13, 7, 2);              // Init the DS1302
  * these are logical mappings of physical IR keypad keys to internal callable functions.
  * its the way we soft-map keys on a remote to things that happen when you press those keys.
  */
+#define IFC_MENU               0  // enter menu mode
+#define IFC_UP                 1  // up-arrow
+#define IFC_DOWN               2  // down-arrow
+#define IFC_LEFT               3  // left-arrow
+#define IFC_RIGHT              4  // right-arrow
+#define IFC_OK                 5  // Select/OK/Confirm btn
+#define IFC_CANCEL             6  // Cancel/back/exit
 
-#define IFC_MENU                    0   // enter menu mode
-#define IFC_UP                      1   // up-arrow
-#define IFC_DOWN                    2   // down-arrow
-#define IFC_LEFT                    3   // left-arrow
-#define IFC_RIGHT                   4   // right-arrow
-#define IFC_OK                      5   // Select/OK/Confirm btn
-#define IFC_CANCEL                  6   // Cancel/back/exit
+uint8_t backlight_min      = 255; // color-independant 'intensity'
+uint8_t backlight_max      = 255; // color-independant 'intensity'
+uint16_t minCounter        =   0;
+uint16_t tempMinHolder     =   0; // this is used for holding the temp value in menu setting
+char strTime[20];                 // temporary array for time output
+uint8_t psecond            =   0; // previous second
+uint8_t backupTimer        =   0; // timer that will count seconds since the ATO started. 
+uint8_t backupMax          =  10; // max seconds for timer to run. If this is reached, kill the ATO. (adjust timer based on your pump output)
+uint8_t sPos               =   1; // position for setting
+uint8_t lcd_in_use_flag    =   0; // is the LCD in use. Used for IR reading
+uint8_t ATO_FS1_STATE      =   0; // State holder for flat switch 1
+uint8_t ATO_FS2_STATE      =   0; // State holder for flat switch 2
+uint8_t ATO_FS3_STATE      =   0; // State holder for flat switch 3
 
-
-MCP23XX lcd_mcp = MCP23XX(LCD_MCP_DEV_ADDR);
-LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM_BACKLIGHT_PIN);
-uint8_t backlight_min   = 255;           // color-independant 'intensity'
-uint8_t backlight_max   = 255;       // color-independant 'intensity'
-uint16_t minCounter = 0;
-uint16_t tempMinHolder = 0; // this is used for holding the temp value in menu setting
-char strTime[20];
-uint8_t psecond = 0;
-uint8_t sPos = 1; // position for setting
-uint8_t lcd_in_use_flag = 0;
-uint8_t pumps[] = {
-  3, 5, 6, 11, 10}; // pins for the pumps
-uint8_t val[] = { 
-  0,255};
-uint8_t i, global_mode,ts, tmi, th, tdw, tdm, tmo, ty;
+uint8_t pumps[] = { 3, 5, 6, 11, 10}; // pins for the pumps
+uint8_t val[] = {0,255}; 
+uint8_t i, global_mode,ts, tmi, th, tdw, tdm, tmo, ty;//variables for time
 uint16_t key;
 boolean first = true;
 // this is a temporary holding area that we write to, key by key; and then dump all at once when the user finishes the last one
@@ -66,23 +69,24 @@ struct _ir_keypress_mapping {
 }
 
 ir_keypress_mapping[MAX_FUNCTS+1] = {
-  { 
-    0x00, IFC_MENU,            "Menu"                               }
-  ,{ 
-    0x00, IFC_UP,              "Up Arrow"                           }
-  ,{ 
-    0x00, IFC_DOWN,            "Down Arrow"                         }
-  ,{ 
-    0x00, IFC_LEFT,            "Left Arrow"                         }
-  ,{ 
-    0x00, IFC_RIGHT,           "Right Arrow"                        }
-  ,{ 
-    0x00, IFC_OK,              "Confirm/Select"                     }
-  ,{ 
-    0x00, IFC_CANCEL,          "Back/Cancel"                        }
-  ,{ 
-    0x00, IFC_KEY_SENTINEL,    "NULL"                               }
+  { 0x00, IFC_MENU,          "Menu"           }
+ ,{ 0x00, IFC_UP,            "Up Arrow"       }
+ ,{ 0x00, IFC_DOWN,          "Down Arrow"     }
+ ,{ 0x00, IFC_LEFT,          "Left Arrow"     }
+ ,{ 0x00, IFC_RIGHT,         "Right Arrow"    }
+ ,{ 0x00, IFC_OK,            "Confirm/Select" }
+ ,{ 0x00, IFC_CANCEL,        "Back/Cancel"    }
+ ,{ 0x00, IFC_KEY_SENTINEL,  "NULL"           }
 };
+
+//Init the Real Time Clock
+DS1302 rtc(13, 7, 2);
+
+//Init the MCP port expander for LCD
+MCP23XX lcd_mcp = MCP23XX(LCD_MCP_DEV_ADDR);
+
+//Init the LCD
+LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM_BACKLIGHT_PIN);
 
 //this controls the menu backend and the event generation
 MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
@@ -134,6 +138,11 @@ void setup()
   // Enable config pin's pullup
   pinMode(CONFIG_PIN,INPUT);
   digitalWrite(CONFIG_PIN,HIGH);
+  pinMode(ATO_FS1, INPUT);
+  pinMode(ATO_FS2, INPUT);
+  pinMode(ATO_FS3, INPUT);
+  pinMode(ATO_RELAY, OUTPUT);
+  
 
   //start IR sensor
   irrecv.enableIRIn();
@@ -198,7 +207,11 @@ void loop()
   delay(50);
 }
 
-void run_sec( void ){ // runs every second
+
+/*********************************/
+/****** RUN ONCE PER SECOND ******/
+/*********************************/
+void run_sec( void ){
 if (global_mode == 0){
   update_pump(psecond%5,val[psecond%2]);
   //  lcd.cursorTo(0,0);
@@ -208,11 +221,15 @@ if (global_mode == 0){
   //  lcd.print("  ");
   analogWrite(pumps[psecond%5],val[psecond%2]);
 }
-if (global_mode!=3){
-  update_clock(3,0);
-}
+  if (global_mode!=3){
+    update_clock(3,0);
+  }
 }
 
+
+/*******************************/
+/****** PRINT TIME AT X,Y ******/
+/*******************************/
 void update_clock(uint8_t x, uint8_t y){
   lcd.cursorTo(x,y);
   lcd.print(rtc.getTimeStr());
@@ -227,6 +244,10 @@ void update_clock(uint8_t x, uint8_t y){
   }
 }
 
+
+/**************************************/
+/****** SET PUMP pump TO PWM val ******/
+/**************************************/
 void update_pump(uint8_t pump, uint8_t val){
   //      pinMode(pumps[pump], val);
   //      char tmpStr[5];
@@ -243,6 +264,10 @@ void update_pump(uint8_t pump, uint8_t val){
   lcd.print("  ");
 }
 
+
+/********************************/
+/****** INITIAL SETUP MODE ******/
+/********************************/
 void enter_setup_mode( void )  {
 
   uint8_t setup_finished = 0;
@@ -366,12 +391,10 @@ done_learn_mode:
   lcd.clear();
 }
 
-long get_input_key( void ){
-
-  return get_IR_key();
-}
-
-long  get_IR_key( void ) {
+/*******************************/
+/****** GET INFRARED KEY ******/
+/******************************/
+long get_input_key( void ) {
   long my_result;
   long last_value = results.value;   // save the last one in case the new one is a 'repeat code'
 
@@ -422,8 +445,48 @@ void cal_pump(uint8_t pump){
 /*************************/
 /****** REVIEW PUMP ******/
 /*************************/
-void review  _pump(uint8_t pump){
+void review_pump(uint8_t pump){
   
+}
+
+/**************************/
+/****** AUTO TOP-OFF ******/
+/**************************/
+void do_ATO(){
+
+  ATO_FS1_STATE = digitalRead(ATO_FS1);
+  ATO_FS2_STATE = digitalRead(ATO_FS2);
+  ATO_FS3_STATE = digitalRead(ATO_FS3);
+
+#ifdef DEBUG
+  Serial.print("mainSwitchState: ");
+  Serial.println(mainSwitchState); 
+  Serial.print("pumpSwitchState: ");
+  Serial.println(pumpSwitchState); 
+#endif
+
+  if ( (backupTimer < backupMax) && (ATO_FS1_STATE == HIGH) && (ATO_FS2_STATE == HIGH)){
+    //all is good. turn ATO on and sleep 1 sec
+//    digitalWrite(redLED,HIGH);
+    digitalWrite(ATO_RELAY, HIGH);
+    backupTimer++;
+  }
+  else if (ATO_FS1_STATE == LOW){
+    // water level is good. reset timer
+    digitalWrite(ATO_RELAY, LOW);
+//    digitalWrite(redLED,LOW);
+    backupTimer = 0;
+  }
+  else if (backupTimer >= backupMax){
+    // Something is wrong. Kill the power
+    digitalWrite(ATO_RELAY, LOW);
+//    digitalWrite(redLED,HIGH);
+  }
+  else{
+    // RO/DI water level too low
+    digitalWrite(ATO_RELAY, LOW);
+//    digitalWrite(redLED,HIGH);
+  }
 }
 
 
@@ -721,12 +784,11 @@ void show_menu( void ) {
 }
 
 
-/*
-	This is an important function
-	Here all use events are handled
-	
-	This is where you define a behaviour for a menu item
-*/
+
+
+/***********************************/
+/****** HANDLE MENU SELECTION ******/
+/***********************************/
 void menuUseEvent(MenuUseEvent used)
 {
 //	if (used.item == setDelay) //comparison agains a known item
@@ -771,6 +833,10 @@ void menuUseEvent(MenuUseEvent used)
 	Here we get a notification whenever the user changes the menu
 	That is, when the menu is navigated
 */
+
+/*****************************/
+/****** MENU NAVIGATION ******/
+/*****************************/
 void menuChangeEvent(MenuChangeEvent changed)
 {
   Serial.print("Menu change ");
@@ -794,6 +860,10 @@ void menuChangeEvent(MenuChangeEvent changed)
 }
 
 
+
+/***************************/
+/****** INIT THE MENU ******/
+/***************************/
 void menuSetup()
 {
   //add the settings menu to the menu root
