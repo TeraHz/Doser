@@ -139,8 +139,14 @@ void setup()
   pinMode(CONFIG_PIN,INPUT);
   digitalWrite(CONFIG_PIN,HIGH);
   pinMode(ATO_FS1, INPUT);
+  // Enable Float switch 1 pin's pullup
+  digitalWrite(ATO_FS1,HIGH);
   pinMode(ATO_FS2, INPUT);
+  // Enable Float switch 2 pin's pullup
+  digitalWrite(ATO_FS2,HIGH);
   pinMode(ATO_FS3, INPUT);
+  // Enable Float switch 3 pin's pullup
+  digitalWrite(ATO_FS3,HIGH);
   pinMode(ATO_RELAY, OUTPUT);
   
 
@@ -181,29 +187,30 @@ void loop()
   // Get data from the DS1302
   t = rtc.getTime();
   uint8_t second = t.sec;
-  if (global_mode == 0) {            // main 'everyday use' mode
+  if (global_mode == 0) {     //  home screen
     onKeyPress();
   }//global_mode == 0
   else if (global_mode == 1){ //we're in menu
-  if (first){
-    lcd.clear_L1();
-    lcd.clear_L2();
-    lcd.clear_L3();
-    lcd.cursorTo(0,0);
-    lcd.print((char*)menu.getCurrent().getName());
-    first=false;
-  }
+    if (first){
+      lcd.clear_L1();
+      lcd.clear_L2();
+      lcd.clear_L3();
+      lcd.cursorTo(0,0);
+      lcd.print((char*)menu.getCurrent().getName());
+      first=false;
+    }
     show_menu();
-    
-  }else if (global_mode == 3){
+  } //global_mode == 1
+  else if (global_mode == 3){
     set_time();
-  }else{//we're home
+  }//global_mode == 3
+  else{//we're somewhere else?
     
   }
   if (psecond != second){
       psecond = second;
       run_sec();
-    }
+  }
   delay(50);
 }
 
@@ -212,15 +219,16 @@ void loop()
 /****** RUN ONCE PER SECOND ******/
 /*********************************/
 void run_sec( void ){
-if (global_mode == 0){
-  update_pump(psecond%5,val[psecond%2]);
-  //  lcd.cursorTo(0,0);
-  //  lcd.print(psecond%5);
-  //  lcd.print(":");
-  //  lcd.print(val[psecond%2]);
-  //  lcd.print("  ");
-  analogWrite(pumps[psecond%5],val[psecond%2]);
-}
+  do_ATO();
+  if (global_mode == 0){
+    update_pump(psecond%5,val[psecond%2]);
+    //  lcd.cursorTo(0,0);
+    //  lcd.print(psecond%5);
+    //  lcd.print(":");
+    //  lcd.print(val[psecond%2]);
+    //  lcd.print("  ");
+    analogWrite(pumps[psecond%5],val[psecond%2]);
+  }
   if (global_mode!=3){
     update_clock(3,0);
   }
@@ -465,20 +473,24 @@ void do_ATO(){
   Serial.println(pumpSwitchState); 
 #endif
 
-  if ( (backupTimer < backupMax) && (ATO_FS1_STATE == HIGH) && (ATO_FS2_STATE == HIGH)){
-    //all is good. turn ATO on and sleep 1 sec
+  if ( (backupTimer < backupMax) && (ATO_FS1_STATE == LOW) && (ATO_FS2_STATE == LOW) && (ATO_FS3_STATE == LOW)){ // LOW because we are pulling down the pins when switches activate
+    //all is good. turn ATO on
 //    digitalWrite(redLED,HIGH);
     digitalWrite(ATO_RELAY, HIGH);
     backupTimer++;
   }
-  else if (ATO_FS1_STATE == LOW){
+  else if ((ATO_FS1_STATE == HIGH) && (ATO_FS2_STATE == LOW)){
     // water level is good. reset timer
     digitalWrite(ATO_RELAY, LOW);
 //    digitalWrite(redLED,LOW);
     backupTimer = 0;
   }
+  else if (ATO_FS3_STATE == HIGH){
+    // backup float switch is on, something is wrong.
+    digitalWrite(ATO_RELAY, LOW);
+  }
   else if (backupTimer >= backupMax){
-    // Something is wrong. Kill the power
+    // Pump has been running for too long, something is wrong.
     digitalWrite(ATO_RELAY, LOW);
 //    digitalWrite(redLED,HIGH);
   }
