@@ -9,7 +9,7 @@
 
 class Pump {
 public:
-  Pump( uint8_t pin, uint8_t mls, uint8_t dose, char * desc);
+  Pump( uint8_t pin, uint8_t mls, uint16_t dose, char * desc);
   ~Pump();
   uint8_t getPin( void );
   void setPin( uint8_t );
@@ -17,15 +17,15 @@ public:
   void setMls( uint8_t );
   char* getDescription( void );
   void setDescription( char*);
-  uint8_t getDose( void );
-  void setDose( uint8_t );
+  uint16_t getDose( void );
+  void setDose( uint16_t );
   void save(uint16_t ee);
   void load(uint16_t ee);
 
 private:
   uint8_t _pin; // which digital pin controls the pump
   uint8_t _mls; // how many ml/s does the pump move
-  uint8_t _dose; // daily dose for the pump
+  uint16_t _dose; // daily dose for the pump in ml
   char * _desc;
 };
 #endif

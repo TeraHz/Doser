@@ -8,7 +8,7 @@
 #include <DS1302.h> //from http://www.henningkarlsen.com/electronics/library.php?id=5
 #include "LCDi2c4bit.h"
 #include "mcp23xx.h"
-#include "Doser.h"
+#include "EEPROMAnything.h"
 #include "IRremote.h"
 #include "MenuBackend.h"
 #include "Pump.h"

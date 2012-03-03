@@ -1,6 +1,8 @@
 #include "Pump.h"
+#include "EEPROMAnything.h"
 
-Pump::Pump( uint8_t pin, uint8_t mls, uint8_t dose, char* desc) {
+
+Pump::Pump( uint8_t pin, uint8_t mls, uint16_t dose, char* desc) {
   pinMode(pin, OUTPUT);
   _pin = pin;
   _mls = mls;
@@ -36,20 +38,25 @@ void Pump::setDescription( char* desc){
   _desc = desc;
 }
 
-uint8_t Pump::getDose( void ){
+uint16_t Pump::getDose( void ){
   return _dose;
 
 }
 
-void Pump::setDose( uint8_t dose){
+void Pump::setDose( uint16_t dose){
   _dose = dose;
 }
 
 
 void Pump::save(uint16_t ee){
-  
+  EEPROM_writeAnything(ee, _mls);
+  EEPROM_writeAnything(ee+1, _dose);
+  EEPROM_writeAnything(ee+3, _desc);
 }
 
 void Pump::load(uint16_t ee){
+  EEPROM_readAnything(ee, _mls);
+  EEPROM_readAnything(ee+1, _dose);
+  EEPROM_readAnything(ee+3, _desc);
   
 }
