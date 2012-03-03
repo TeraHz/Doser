@@ -50,13 +50,13 @@ void Pump::setDose( uint16_t dose){
 
 void Pump::save(uint16_t ee){
   EEPROM_writeAnything(ee, _mls);
-  EEPROM_writeAnything(ee+1, _dose);
-  EEPROM_writeAnything(ee+3, _desc);
+  EEPROM_writeAnything(ee+10, _dose);
+  EEPROM_writeAnything(ee+20, _desc);
 }
 
 void Pump::load(uint16_t ee){
   EEPROM_readAnything(ee, _mls);
-  EEPROM_readAnything(ee+1, _dose);
-  EEPROM_readAnything(ee+3, _desc);
+  EEPROM_readAnything(ee+10, _dose);
+  EEPROM_readAnything(ee+20, _desc);
   
 }

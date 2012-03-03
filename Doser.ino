@@ -150,7 +150,11 @@ void setup()
   // Enable Float switch 3 pin's pullup
   digitalWrite(ATO_FS3,HIGH);
   pinMode(ATO_RELAY, OUTPUT);
-  
+  p1.load(100);
+  p2.load(200);
+  p3.load(300);
+  p4.load(400);
+  p5.load(500);
 
   //start IR sensor
   irrecv.enableIRIn();
