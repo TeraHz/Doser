@@ -1,11 +1,14 @@
 #include "Pump.h"
 
 Pump::Pump( uint8_t pin, uint8_t mls, uint8_t dose, char* desc) {
+  pinMode(pin, OUTPUT);
   _pin = pin;
   _mls = mls;
   _dose = dose;
   _desc = desc;
 }
+
+Pump::~Pump(){}
 
 uint8_t Pump::getPin( void ){
   return _pin;
@@ -13,6 +16,7 @@ uint8_t Pump::getPin( void ){
 }
 
 void Pump::setPin( uint8_t pin){
+  pinMode(pin, OUTPUT);      // enable the pin
   _pin = pin;
 }
 

@@ -53,7 +53,6 @@ uint8_t ATO_FS1_STATE      =   0; // State holder for flat switch 1
 uint8_t ATO_FS2_STATE      =   0; // State holder for flat switch 2
 uint8_t ATO_FS3_STATE      =   0; // State holder for flat switch 3
 
-uint8_t pumps[] = { 3, 5, 6, 11, 10}; // pins for the pumps
 uint8_t val[] = {0,255}; 
 uint8_t i, global_mode,ts, tmi, th, tdw, tdm, tmo, ty;//variables for time
 uint16_t key;
@@ -88,6 +87,15 @@ MCP23XX lcd_mcp = MCP23XX(LCD_MCP_DEV_ADDR);
 
 //Init the LCD
 LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM_BACKLIGHT_PIN);
+
+//Init the Pumps
+//Pump(pin number, ml/s, daily dose, dsecription);
+Pump p1 = Pump(3,0,0,"Pump 1");
+Pump p2 = Pump(5,0,0,"Pump 2");
+Pump p3 = Pump(6,0,0,"Pump 3");
+Pump p4 = Pump(11,0,0,"Pump 4");
+Pump p5 = Pump(10,0,0,"Pump 5");
+
 
 //this controls the menu backend and the event generation
 MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
@@ -129,13 +137,6 @@ void setup()
   Serial.begin(9600);
   Serial.println("Hello");
   Wire.begin();
-
-  // Initialize the pump pins
-  pinMode(pumps[0], OUTPUT);      // pump 1
-  pinMode(pumps[1], OUTPUT);      // pump 2
-  pinMode(pumps[2], OUTPUT);      // pump 3
-  pinMode(pumps[3], OUTPUT);      // pump 4
-  pinMode(pumps[4], OUTPUT);      // pump 5
   // Enable config pin's pullup
   pinMode(CONFIG_PIN,INPUT);
   digitalWrite(CONFIG_PIN,HIGH);
@@ -228,7 +229,7 @@ void run_sec( void ){
     //  lcd.print(":");
     //  lcd.print(val[psecond%2]);
     //  lcd.print("  ");
-    analogWrite(pumps[psecond%5],val[psecond%2]);
+//    analogWrite(pumps[psecond%5],val[psecond%2]);
   }
   if (global_mode!=3){
     update_clock(3,0);
