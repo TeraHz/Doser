@@ -11,6 +11,7 @@
 #include "Doser.h"
 #include "IRremote.h"
 #include "MenuBackend.h"
+#include "Pump.h"
 
 #define PWM_BACKLIGHT_PIN      9  // pwm-controlled LED backlight
 #define CONFIG_PIN             8  // pwm-controlled LED backlight
@@ -468,10 +469,12 @@ void do_ATO(){
   ATO_FS3_STATE = digitalRead(ATO_FS3);
 
 #ifdef DEBUG
-  Serial.print("mainSwitchState: ");
-  Serial.println(mainSwitchState); 
-  Serial.print("pumpSwitchState: ");
-  Serial.println(pumpSwitchState); 
+  Serial.print("ATO_FS1_STATE: ");
+  Serial.println(ATO_FS1_STATE); 
+  Serial.print("ATO_FS2_STATE: ");
+  Serial.println(ATO_FS2_STATE);
+  Serial.print("ATO_FS3_STATE: ");
+  Serial.println(ATO_FS3_STATE);
 #endif
 
   if ( (backupTimer < backupMax) && (ATO_FS1_STATE == LOW) && (ATO_FS2_STATE == LOW) && (ATO_FS3_STATE == LOW)){ // LOW because we are pulling down the pins when switches activate
