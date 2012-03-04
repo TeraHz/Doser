@@ -197,11 +197,21 @@ void loop()
   }//global_mode == 0
   else if (global_mode == 1){ //we're in menu
     if (first){
+      while (menu.getCurrent().getLeft() != 0){
+        menu.moveLeft();
+      }
       lcd.clear_L1();
       lcd.clear_L2();
       lcd.clear_L3();
       lcd.cursorTo(0,0);
       lcd.print((char*)menu.getCurrent().getName());
+      if (menu.getCurrent().getRight() != 0){
+        lcd.cursorTo(1,3);
+        lcd.print(">");
+      }else{
+        lcd.cursorTo(1,3);
+        lcd.print(" ");
+      }
       first=false;
     }
     show_menu();
@@ -895,16 +905,20 @@ void menuUseEvent(MenuUseEvent used)
       cal_pump(p4);
     }else if(used.item == mi_pump5_calibrate){
       cal_pump(p5);
-    }else if(used.item == mi_pump1_review || used.item == mi_pump1){
+    }else if(used.item == mi_pump1_review){
       review_pump(p1);
-    }else if(used.item == mi_pump2_review || used.item == mi_pump2){
+    }else if(used.item == mi_pump2_review){
       review_pump(p1);
-    }else if(used.item == mi_pump3_review || used.item == mi_pump3){
+    }else if(used.item == mi_pump3_review){
       review_pump(p1);
-    }else if(used.item == mi_pump4_review || used.item == mi_pump4){
+    }else if(used.item == mi_pump4_review){
       review_pump(p1);
-    }else if(used.item == mi_pump5_review || used.item == mi_pump5){
+    }else if(used.item == mi_pump5_review){
       review_pump(p1);
+    }else if(used.item == mi_ATO_set){
+    }else if(used.item == settings || used.item == mi_pump1 || used.item == mi_pump2 || used.item == mi_pump3 || used.item == mi_pump4 || used.item == mi_pump5){
+      menu.moveRight();
+    }else if(used.item == mi_ATO_set){
     }else if(used.item == mi_ATO_set){
     }else {
 //      lcd.cursorTo(2,0);
@@ -931,12 +945,16 @@ void menuChangeEvent(MenuChangeEvent changed)
 
   if (global_mode == 1){
     if (changed.to.getLeft() == 0){
-      lcd.clear_L2();
+      if (changed.to.getRight() != 0){
+        lcd.cursorTo(1,0);
+        lcd.print("   >                ");
+      }else{
+        lcd.cursorTo(1,3);
+        lcd.print(" ");
+      }
       lcd.cursorTo(0,0);
       lcd.printL((char*)changed.to.getName(), 20);
-    }else{ 
-//      lcd.cursorTo(1,0);
-//      lcd.print("   >                ");
+    }else{
       lcd.cursorTo(1,3);
       lcd.print("> ");
       lcd.printL((char*)changed.to.getName(), 15);
