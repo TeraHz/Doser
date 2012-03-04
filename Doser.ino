@@ -62,13 +62,13 @@ uint16_t ir_key_bank1[MAX_FUNCTS+1];
 decode_results results;
 
 // this is used in learn-mode, to prompt the user and assign enums to internal functions
-struct _ir_keypress_mapping {
-  long key_hex;
+struct _ir_keys {
+  long hex;
   uint8_t internal_funct_code;
-  char funct_name[16];
+  char name[16];
 }
 
-ir_keypress_mapping[MAX_FUNCTS+1] = {
+ir_keys[MAX_FUNCTS+1] = {
   { 0x00, IFC_MENU,          "Menu"           }
  ,{ 0x00, IFC_UP,            "Up Arrow"       }
  ,{ 0x00, IFC_DOWN,          "Down Arrow"     }
@@ -135,7 +135,7 @@ Time t;
 void setup()
 {
   Serial.begin(9600);
-  Serial.println("Hello");
+//  Serial.println("Hello");
   Wire.begin();
   // Enable config pin's pullup
   pinMode(CONFIG_PIN,INPUT);
@@ -159,7 +159,6 @@ void setup()
   //start IR sensor
   irrecv.enableIRIn();
  
-
  
   // Setup Serial connection
   //start LCD
@@ -168,7 +167,7 @@ void setup()
   lcd.backLight(255);
 
 
- // Set the clock to run-mode, and disable the write protection
+// // Set the clock to run-mode, and disable the write protection
 //    rtc.halt(false);
 //    rtc.writeProtect(false);
 //  // The following lines can be commented out to use the values already stored in the DS1302
@@ -184,7 +183,7 @@ void setup()
  //read remote keys from EEPROM  
   for (i=0; i<=MAX_FUNCTS; i++) {
     EEPROM_readAnything(40 + i*sizeof(key), key);
-    ir_keypress_mapping[i].key_hex = key;
+    ir_keys[i].hex = key;
   }
 }
 
@@ -259,6 +258,14 @@ void update_clock(uint8_t x, uint8_t y){
 }
 
 
+/*******************************/
+/****** PRINT TEMP AT X,Y ******/
+/*******************************/
+void update_temp(uint8_t x, uint8_t y){
+  lcd.cursorTo(x,y);
+  lcd.print(strTime);
+}
+
 /********************************/
 /****** INITIAL SETUP MODE ******/
 /********************************/
@@ -278,17 +285,17 @@ void enter_setup_mode( void )  {
 
   idx = 0;
   while (!setup_finished) {
-    if (!strcmp(ir_keypress_mapping[idx].funct_name, "NULL")) {
+    if (!strcmp(ir_keys[idx].name, "NULL")) {
       setup_finished = 1;   // signal we're done with the whole list  
       goto done_learn_mode;
     }  
 
     // we embed the index inside our array of structs, so that even if the user comments-out blocks
     // of it, we still have the same index # for the same row of content
-    eeprom_index = ir_keypress_mapping[idx].internal_funct_code;
+    eeprom_index = ir_keys[idx].internal_funct_code;
 
     // prompt the user for which key to press
-    lcd.send_string(ir_keypress_mapping[idx].funct_name, LCD_CURS_POS_L2_HOME+1);
+    lcd.send_string(ir_keys[idx].name, LCD_CURS_POS_L2_HOME+1);
     delay(300);
 
     blink_toggle = 1;
@@ -308,7 +315,7 @@ void enter_setup_mode( void )  {
       else {
         blink_toggle = 1;
         ++blink_count;
-        lcd.send_string(ir_keypress_mapping[idx].funct_name, LCD_CURS_POS_L2_HOME+1);  // redraw the string
+        lcd.send_string(ir_keys[idx].name, LCD_CURS_POS_L2_HOME+1);  // redraw the string
         delay(600);  // debounce
       }
 
@@ -328,7 +335,7 @@ void enter_setup_mode( void )  {
 
         for (i=0; i<=MAX_FUNCTS; i++) {
           EEPROM_readAnything(40 + i*sizeof(key), key);
-          ir_keypress_mapping[i].key_hex = key;
+          ir_keys[i].hex = key;
         }
 
         delay(1000);
@@ -343,7 +350,7 @@ void enter_setup_mode( void )  {
 
     // if we got here, a non-blank IR keypress was detected!
     lcd.send_string("*", LCD_CURS_POS_L2_HOME);
-    lcd.send_string(ir_keypress_mapping[idx].funct_name, LCD_CURS_POS_L2_HOME+1);  // redraw the string
+    lcd.send_string(ir_keys[idx].name, LCD_CURS_POS_L2_HOME+1);  // redraw the string
 
     delay(1000);  // debounce a little more
 
@@ -367,13 +374,13 @@ void enter_setup_mode( void )  {
 done_learn_mode:
   global_mode = 0;           // back to main 'everyday use' mode
   lcd.clear();
-  lcd.send_string("Learning Done", LCD_CURS_POS_L1_HOME);
-  delay(500);
-  lcd.send_string("Saving Key Codes", LCD_CURS_POS_L2_HOME);
+//  lcd.send_string("Learning Done", LCD_CURS_POS_L1_HOME);
+//  delay(500);
+//  lcd.send_string("Saving Key Codes", LCD_CURS_POS_L2_HOME);
 
   // copy (submit) all keys to the REAL working slots
   for (i=0; i<=MAX_FUNCTS; i++) {
-    ir_keypress_mapping[i].key_hex = ir_key_bank1[i];
+    ir_keys[i].hex = ir_key_bank1[i];
     EEPROM_writeAnything(40 + i*sizeof(ir_key_bank1[i]), ir_key_bank1[i]);    // blocks of 4 bytes each (first 40 are reserved, though)
     ratio = (float)i / (float)idx;
 
@@ -389,6 +396,7 @@ done_learn_mode:
 /****** GET INFRARED KEY ******/
 /******************************/
 long get_input_key( void ) {
+//  Serial.println("get_input_key()");
   long my_result;
   long last_value = results.value;   // save the last one in case the new one is a 'repeat code'
 
@@ -396,25 +404,28 @@ long get_input_key( void ) {
 
     // fix repeat codes (make them look like truly repeated keys)
     if (results.value == 0xffffffff) {
-
+//  Serial.println(1);
       if (last_value != 0xffffffff) {  
         results.value = last_value;
+//          Serial.println(2);
       } 
       else {
+//          Serial.println(3);
         results.value = 0;
       }
 
     }
 
     if (results.value != 0xffffffff) {
+//        Serial.println(4);
       my_result = results.value;
     } 
     else {
+//        Serial.println(5);
       my_result = last_value;  // 0;
     }
 
     irrecv.resume();    // we just consumed one key; 'start' to receive the next value
-
       return results.value; //my_result;
   }
   else {
@@ -430,37 +441,44 @@ void update_pump(uint8_t pump, uint8_t val){
   //      pinMode(pumps[pump], val);
   //      char tmpStr[5];
   //      sprintf(tmpStr,"%d:%03d ",pump+1, val);
-  if (pump*7 < 20){
-    lcd.cursorTo(0,pump*7);
-  }
-  else{
-    lcd.cursorTo(1,(pump-3)*7+4);
-  }
-  lcd.print(pump+1);
-  lcd.print(":");
-  lcd.print(val);
-  lcd.print("  ");
+//  if (pump*7 < 20){
+//    lcd.cursorTo(0,pump*7);
+//  }
+//  else{
+//    lcd.cursorTo(1,(pump-3)*7+4);
+//  }
+//  lcd.print(pump+1);
+//  lcd.print(":");
+//  lcd.print(val);
+//  lcd.print("  ");
 }
 
 
 /**********************/
 /****** SET PUMP ******/
 /**********************/
-void set_pump(uint8_t pump){
-  
+void set_pump(Pump &pump){
+  lcd.clear();
+  lcd.cursorTo(0,0);
+  lcd.print(pump.getDescription());
+  lcd.cursorTo(1,0);
+  lcd.print("Enter ml per day:");  
+  lcd.cursorTo(2,0);
+  lcd.print(" ");
+  lcd.print(pump.getMls());
 }
 
 /****************************/
 /****** CALIBRATE PUMP ******/
 /****************************/
-void cal_pump(uint8_t pump){
+void cal_pump(Pump &pump){
   
 }
 
 /*************************/
 /****** REVIEW PUMP ******/
 /*************************/
-void review_pump(uint8_t pump){
+void review_pump(Pump &pump){
   
 }
 
@@ -515,27 +533,30 @@ void do_ATO(){
 /****** SET THE TIME ******/
 /**************************/
 void set_time( void ){
+//  Serial.println("-- SET_TIME getkey --");
   key = get_input_key();
   if (key == 0) {
     return;
   }
+  delay(200);
+
   // key = OK
-  if (key == ir_keypress_mapping[IFC_OK].key_hex ) {
-     // Set the clock to run-mode, and disable the write protection
+  if (key == ir_keys[IFC_OK].hex ) {
+//    Serial.println("-- SET_TIME OK --");
+    // Set the clock to run-mode, and disable the write protection
     rtc.halt(false);
     rtc.writeProtect(false);
-  // The following lines can be commented out to use the values already stored in the DS1302
-    rtc.setDOW(tdw);        // Set Day-of-Week to FRIDAY
-    rtc.setTime(th, tmi, ts);     // Set the time to 12:00:00 (24hr format)
-    rtc.setDate(tdm, tmo, ty);   // Set the date to August 6th, 2010
-    //    RTC.setDate(ts, tmi, th, tdw, tdm, tmo, ty);
+    rtc.setDOW(tdw);        
+    rtc.setTime(th, tmi, ts);     
+    rtc.setDate(tdm, tmo, 2000+ty); 
     global_mode = 0;
     lcd.clear();
     first=true;
   }
 
   // key = Up
-  else if (key == ir_keypress_mapping[IFC_UP].key_hex){
+  else if (key == ir_keys[IFC_UP].hex){
+//    Serial.println("-- UP --");
     if (sPos == 1){
       if (th < 23) {
         th++;
@@ -593,14 +614,14 @@ void set_time( void ){
       }
     }
     delay (100);
-    sprintf(strTime,"%02d:%02d:%02d %02d.%02d.%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
-//    update_clock(3,0);   
+    sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
+    update_temp(2,0);   
   }
 
 
   // key = Down
-  else if (key == ir_keypress_mapping[IFC_DOWN].key_hex){ 
-
+  else if (key == ir_keys[IFC_DOWN].hex){ 
+//    Serial.println("-- DOWN --");
     if (sPos == 1){
       if (th > 0) {
         th--;
@@ -659,12 +680,13 @@ void set_time( void ){
     }
     delay (100);
     sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
-    update_clock(3,0);   
+    update_temp(2,0);   
   }
 
 
   // key = Left
-  else if (key == ir_keypress_mapping[IFC_LEFT].key_hex){
+  else if (key == ir_keys[IFC_LEFT].hex){
+//    Serial.println("-- LEFT --");
     if (sPos > 1) {
       sPos--;
     } 
@@ -676,7 +698,8 @@ void set_time( void ){
 
 
   // key = Right
-  else if (key == ir_keypress_mapping[IFC_RIGHT].key_hex){ 
+  else if (key == ir_keys[IFC_RIGHT].hex){
+//    Serial.println("-- RIGHT --"); 
     if (sPos < 7) {
       sPos++;
     } 
@@ -687,12 +710,30 @@ void set_time( void ){
   }
 
   // key = Cancel
-  else if (key == ir_keypress_mapping[IFC_CANCEL].key_hex){
+  else if (key == ir_keys[IFC_CANCEL].hex){
+//    Serial.println("-- CANCEL --");
     lcd.clear();
     global_mode = 0;
     delay (100);
     first = true;
-  } 
+  }else{
+#ifdef DEBUG
+    Serial.print(key,HEX);
+    Serial.print(":");
+    Serial.print(ir_keys[IFC_UP].hex,HEX);
+    Serial.print(" ");
+    Serial.print(ir_keys[IFC_DOWN].hex,HEX);
+    Serial.print(" ");
+    Serial.print(ir_keys[IFC_LEFT].hex,HEX);
+    Serial.print(" ");
+    Serial.print(ir_keys[IFC_RIGHT].hex,HEX);
+    Serial.print(" ");
+    Serial.print(ir_keys[IFC_OK].hex,HEX);
+    Serial.print(" ");
+    Serial.print(ir_keys[IFC_CANCEL].hex,HEX);
+    Serial.println();
+#endif
+  }
   delay(100);
   irrecv.resume(); // we just consumed one key; 'start' to receive the next value
 
@@ -710,38 +751,38 @@ void onKeyPress( void )
   }
 
   // key = MENU
-  else if (key == ir_keypress_mapping[IFC_MENU].key_hex) {
+  else if (key == ir_keys[IFC_MENU].hex) {
     global_mode = 1;
   }
 
   // key = UP
-  else if (key == ir_keypress_mapping[IFC_UP].key_hex) {
+  else if (key == ir_keys[IFC_UP].hex) {
   }
 
   // key = DOWN
-  else if (key == ir_keypress_mapping[IFC_DOWN].key_hex) {
+  else if (key == ir_keys[IFC_DOWN].hex) {
   }
 
   // key = LEFT
-  else if (key == ir_keypress_mapping[IFC_LEFT].key_hex) {
+  else if (key == ir_keys[IFC_LEFT].hex) {
   }
 
   // key = RIGHT
-  else if (key == ir_keypress_mapping[IFC_RIGHT].key_hex) {
+  else if (key == ir_keys[IFC_RIGHT].hex) {
   }
 
   // key = OK
-  else if (key == ir_keypress_mapping[IFC_OK].key_hex) {
+  else if (key == ir_keys[IFC_OK].hex) {
     //do something
   }
 
   // key = Cancel
-  else if (key == ir_keypress_mapping[IFC_CANCEL].key_hex) {
+  else if (key == ir_keys[IFC_CANCEL].hex) {
     //do something
   }
 
   else{
-    Serial.println("unsupported");
+//    Serial.println("unsupported");
   }
 
   delay(100);
@@ -752,41 +793,41 @@ void onKeyPress( void )
 /****** MAIN MENU ******/
 /***********************/
 void show_menu( void ) {
-//  Serial.println("In MENU");
+  Serial.println("In MENU");
   key = get_input_key();
   if (key == 0) {
     return;
   }
-  Serial.print("Key is ");
-  Serial.println(key,HEX);
-
-  if (key == ir_keypress_mapping[IFC_OK].key_hex ) {
-    Serial.println("OK");
+//  Serial.print("Key is ");
+//  Serial.println(key,HEX);
+delay(100);
+  if (key == ir_keys[IFC_OK].hex ) {
+//    Serial.println("OK");
     menu.use();
     
   }
-  else if (key == ir_keypress_mapping[IFC_DOWN].key_hex){
-    Serial.println("DOWN");
+  else if (key == ir_keys[IFC_DOWN].hex){
+//    Serial.println("DOWN");
     menu.moveUp();
     delay (100);
   }
-  else if (key == ir_keypress_mapping[IFC_UP].key_hex){ 
-    Serial.println("UP");
+  else if (key == ir_keys[IFC_UP].hex){ 
+//    Serial.println("UP");
     menu.moveDown();
     delay (100);
   }
-  else if (key == ir_keypress_mapping[IFC_LEFT].key_hex){
-    Serial.println("LEFT");
+  else if (key == ir_keys[IFC_LEFT].hex){
+//    Serial.println("LEFT");
     menu.moveLeft();
     delay (100);
   }
-  else if (key == ir_keypress_mapping[IFC_RIGHT].key_hex){ 
-    Serial.println("RIGHT");
+  else if (key == ir_keys[IFC_RIGHT].hex){ 
+//    Serial.println("RIGHT");
     menu.moveRight();
     delay (100);
   }
-  else if (key == ir_keypress_mapping[IFC_CANCEL].key_hex){
-    Serial.println("BACK");
+  else if (key == ir_keys[IFC_CANCEL].hex){
+//    Serial.println("BACK");
     if (menu.getCurrent().getLeft() == 0){
       lcd.clear_L1();
       lcd.clear_L2();
@@ -818,29 +859,52 @@ void menuUseEvent(MenuUseEvent used)
 //	}
 
     if (used.item == mi_clock){
-            global_mode=3;
-      Serial.println("Yes, item is clock");
+      global_mode=3;
+      Time t = rtc.getTime();
+      th = t.hour;
+      tmi = t.min;
+      ts = t.sec;
+      tdm = t.date;
+      tmo = t.mon;
+      ty = t.year - 2000;
+      tdw = t.dow;
       lcd.clear();
-      update_clock(2,0);   
       lcd.send_string("Use arrows to adjust", LCD_CURS_POS_L2_HOME);
-      lcd.send_string("HH:MM:SS DD.MM.YY DW",LCD_CURS_POS_L4_HOME);
-
+      sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
+      update_temp(2,0);   
+      lcd.send_string("HH:MM:SS DD/MM/YY DW",LCD_CURS_POS_L4_HOME);
       set_time();
     }else if(used.item == mi_pump1_set){
+      global_mode = 4;
+      set_pump(p1);
     }else if(used.item == mi_pump2_set){
+      set_pump(p2);
     }else if(used.item == mi_pump3_set){
+      set_pump(p3);
     }else if(used.item == mi_pump4_set){
+      set_pump(p4);
     }else if(used.item == mi_pump5_set){
+      set_pump(p5);
     }else if(used.item == mi_pump1_calibrate){
+      cal_pump(p1);
     }else if(used.item == mi_pump2_calibrate){
+      cal_pump(p2);
     }else if(used.item == mi_pump3_calibrate){
+      cal_pump(p3);
     }else if(used.item == mi_pump4_calibrate){
+      cal_pump(p4);
     }else if(used.item == mi_pump5_calibrate){
+      cal_pump(p5);
     }else if(used.item == mi_pump1_review || used.item == mi_pump1){
+      review_pump(p1);
     }else if(used.item == mi_pump2_review || used.item == mi_pump2){
+      review_pump(p1);
     }else if(used.item == mi_pump3_review || used.item == mi_pump3){
+      review_pump(p1);
     }else if(used.item == mi_pump4_review || used.item == mi_pump4){
+      review_pump(p1);
     }else if(used.item == mi_pump5_review || used.item == mi_pump5){
+      review_pump(p1);
     }else if(used.item == mi_ATO_set){
     }else {
 //      lcd.cursorTo(2,0);
@@ -860,10 +924,10 @@ void menuUseEvent(MenuUseEvent used)
 /*****************************/
 void menuChangeEvent(MenuChangeEvent changed)
 {
-  Serial.print("Menu change ");
-  Serial.print(changed.from.getName());
-  Serial.print("->");
-  Serial.println(changed.to.getName());
+//  Serial.print("Menu change ");
+//  Serial.print(changed.from.getName());
+//  Serial.print("->");
+//  Serial.println(changed.to.getName());
 
   if (global_mode == 1){
     if (changed.to.getLeft() == 0){
