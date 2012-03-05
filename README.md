@@ -85,7 +85,7 @@ License
 
 *	**Software**
 
-	Copyright (C) 2001-2012 Georgi Todorov
+	Copyright (C) 2011-2012 Georgi Todorov
 	All rights reserved.
 
 	This library is free software; you can redistribute it and/or
