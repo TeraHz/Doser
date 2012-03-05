@@ -60,6 +60,7 @@ public:
   void print( char value[] );
   void print( float );
   void print( int );
+  void print(_FLASH_STRING&);
   void printL( char value[], uint8_t);
   void clear();
   void backLight( uint8_t );

@@ -1,3 +1,27 @@
+/*
+  Doser.ino - DIY 5 channel doser
+  Copyright (C) 2001-2012 Georgi Todorov
+  All rights reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  
+  https://github.com/TeraHz/Doser
+   
+*/
+
+#include <Flash.h> //from http://arduiniana.org/libraries/flash/
 #include <Wire.h>
 #include <EEPROM.h> 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -12,7 +36,7 @@
 #include "IRremote.h"
 #include "MenuBackend.h"
 #include "Pump.h"
-
+FLASH_STRING(edd,"Enter daily dose:");
 #define PWM_BACKLIGHT_PIN      9  // pwm-controlled LED backlight
 #define CONFIG_PIN             8  // pwm-controlled LED backlight
 #define IR_PIN                12  // Sensor data-out pin, wired direct
@@ -233,15 +257,23 @@ void loop()
     }
     show_menu();
   } //global_mode == 1
+  
   else if (global_mode == 3){
     set_time();
-   //global_mode == 2
-  }else if (global_mode == 2){
-    // nothing here yet
+  }//global_mode == 2
+  
+  else if (global_mode == 2){
+    // calibrate here
   }//global_mode == 3
+  
   else if (global_mode == 4){
     set_pump(*temppump);
   }//global_mode == 4
+  
+  else if (global_mode == 5){
+    //review pump here
+  }//global_mode == 5
+  
   else{//we're somewhere else?
     
   }
@@ -485,17 +517,36 @@ void update_pump(uint8_t pump, uint8_t val){
 /**************************************/
 /****** SETUP LCD FOR pump SETUP ******/
 /**************************************/
-void pump_menu_print(Pump &pump){
+void pump_menu_set(Pump &pump){
+  tempMinHolder = pump.getDose();
   lcd.clear(); 
   lcd.cursorTo(0,0);  
-  lcd.printL(pump.getDescription(), 13);
+  lcd.printL(pump.getDescription(), 8);
   lcd.print("Setup");
   lcd.cursorTo(2,0);
+  lcd.print(edd);  
+  lcd.cursorTo(3,0);
+  sprintf(tmp,"   %05u ml         ",pump.getDose());
+  lcd.print(tmp);
+}
+
+/********************************************/
+/****** SETUP LCD FOR pump CALIBRATION ******/
+/********************************************/
+void pump_menu_cal(Pump &pump){
+  tempMinHolder = pump.getMls();
+  lcd.clear(); 
+  lcd.cursorTo(0,0);  
+  lcd.printL(pump.getDescription(), 8);
+  lcd.print("Calibration");
+  lcd.cursorTo(1,0);
   lcd.print("Enter daily dose:");  
   lcd.cursorTo(3,0);
   sprintf(tmp,"   %05u ml         ",pump.getDose());
   lcd.print(tmp);
 }
+
+
 /**********************/
 /****** SET PUMP ******/
 /**********************/
@@ -510,7 +561,7 @@ void set_pump(Pump &pump){
   delay(300);
   // key = OK
   if (key == ir_keys[IFC_OK].hex ) {
-    Serial.println("OK");
+    Serial << F("OK\r\n");
     pump.setDose(tempMinHolder);
     pump.save();
     global_mode = 0;
@@ -592,7 +643,7 @@ void set_pump(Pump &pump){
     delay (100);
     first = true;
   }else{
-    Serial.println("unknown key");
+    Serial << F("unknown key") << "\n\r";
   }
 
   delay(100);
@@ -623,12 +674,9 @@ void do_ATO(){
   ATO_FS3_STATE = digitalRead(ATO_FS3);
 
 #ifdef DEBUG
-  Serial.print("ATO_FS1_STATE: ");
-  Serial.println(ATO_FS1_STATE); 
-  Serial.print("ATO_FS2_STATE: ");
-  Serial.println(ATO_FS2_STATE);
-  Serial.print("ATO_FS3_STATE: ");
-  Serial.println(ATO_FS3_STATE);
+  Serial << F("ATO_FS1_STATE: ") << ATO_FS1_STATE << "\r\n";
+  Serial << F("ATO_FS2_STATE: ") << ATO_FS2_STATE << "\r\n";
+  Serial << F("ATO_FS3_STATE: ") << ATO_FS3_STATE << "\r\n";
 #endif
 
   if ( (backupTimer < backupMax) && (ATO_FS1_STATE == LOW) && (ATO_FS2_STATE == LOW) && (ATO_FS3_STATE == LOW)){ // LOW because we are pulling down the pins when switches activate
@@ -923,7 +971,7 @@ void onKeyPress( void )
 /****** MAIN MENU ******/
 /***********************/
 void show_menu( void ) {
-  Serial.println("In MENU");
+  Serial << F("In MENU\r\n");
   key = get_input_key();
   if (key == 0) {
     return;
@@ -1009,73 +1057,82 @@ void menuUseEvent(MenuUseEvent used)
     // pump1 setup
     else if(used.item == mi_pump1_set){
       global_mode = 4;
-      pump_menu_print(p1);
-      tempMinHolder = p1.getDose();
+      pump_menu_set(p1);
       set_pump(p1);
     }
     // pump2 setup
     else if(used.item == mi_pump2_set){
-      pump_menu_print(p2);
-      tempMinHolder = p2.getDose();
+      global_mode = 4;
+      pump_menu_set(p2);
       set_pump(p2);
     }
     // pump3 setup
     else if(used.item == mi_pump3_set){
-      pump_menu_print(p3);
-      tempMinHolder = p3.getDose();
+      global_mode = 4;
+      pump_menu_set(p3);
       set_pump(p3);
     }
     // pump4 setup
     else if(used.item == mi_pump4_set){
-      pump_menu_print(p4);
-      tempMinHolder = p4.getDose();
+      pump_menu_set(p4);
       set_pump(p4);
     }
     // pump5 setup
     else if(used.item == mi_pump5_set){
-      pump_menu_print(p5);
-      tempMinHolder = p5.getDose();
+      global_mode = 4;
+      pump_menu_set(p5);
       set_pump(p5);
     }
     // pump1 calibration
     else if(used.item == mi_pump1_calibrate){
+      global_mode = 2;
+
       cal_pump(p1);
     }
     // pump2 calibration
     else if(used.item == mi_pump2_calibrate){
+      global_mode = 2;
       cal_pump(p2);
     }
     // pump3 calibration
     else if(used.item == mi_pump3_calibrate){
+      global_mode = 2;
       cal_pump(p3);
     }
     // pump4 calibration
     else if(used.item == mi_pump4_calibrate){
+      global_mode = 2;
       cal_pump(p4);
     }
     // pump5 calibration
     else if(used.item == mi_pump5_calibrate){
+      global_mode = 2;
       cal_pump(p5);
     }
     // pump1 review
     else if(used.item == mi_pump1_review){
+      global_mode = 5;
       review_pump(p1);
     }
     // pump2 review
     else if(used.item == mi_pump2_review){
-      review_pump(p1);
+      global_mode = 5;
+      review_pump(p2);
     }
     // pump3 review
     else if(used.item == mi_pump3_review){
-      review_pump(p1);
+      global_mode = 5;
+      review_pump(p3);
     }
     // pump4 review
     else if(used.item == mi_pump4_review){
-      review_pump(p1);
+      global_mode = 5;
+      review_pump(p4);
     }
     // pump5 review
     else if(used.item == mi_pump5_review){
-      review_pump(p1);
+      global_mode = 5;
+      review_pump(p5);
     }
     // Auto TopOff setup
     else if(used.item == mi_ATO_set){

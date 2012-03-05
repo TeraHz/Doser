@@ -83,31 +83,25 @@ Getting a `Doser`
 License
 -------
 
-Attribution-NonCommercial-ShareAlike 3.0  (CC BY-NC-SA 3.0)
+*	**Software**
 
-*	**You are free:**
+	Copyright (C) 2001-2012 Georgi Todorov
+	All rights reserved.
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-	* to Share - to copy, distribute and transmit the work
-	* to Remix - to adapt the work
-
-*	**Under the following conditions:**
-
-	* Attribution - You must attribute the work in the manner specified by the author or licensor
-	(but not in any way that suggests that they endorse you or your use of the work).
-	* Noncommercial - You may not use this work for commercial purposes.
-	* Share Alike - If you alter, transform, or build upon this work, you may distribute the resulting
-	work only under the same or similar license to this one.
-
-*	**With the understanding that:**
-
-	* Waiver - Any of the above conditions can be waived if you get permission from the copyright holder.
-	* Public Domain - Where the work or any of its elements is in the public domain under applicable law,
-	that status is in no way affected by the license.
-	* Other Rights - In no way are any of the following rights affected by the license:
-		- Your fair dealing or fair use rights, or other applicable copyright exceptions and limitations;
-		- The author's moral rights;
-		- Rights other persons may have either in the work itself or in how the work is used, such as publicity or privacy rights.
-
-For more details about the license visit [http://creativecommons.org/licenses/by-nc-sa/3.0/](http://creativecommons.org/licenses/by-nc-sa/3.0/)
-
+*	**Hardware**
+	Licensed under the TAPR Open Hardware License (www.tapr.org/OHL)

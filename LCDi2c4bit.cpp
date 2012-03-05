@@ -1,5 +1,5 @@
+#include <Flash.h>
 #include "LCDi2c4bit.h"
-
 #include <Wire.h>
 #include <string.h> //needed for strlen()
 #include <inttypes.h>
@@ -360,6 +360,11 @@ LCDI2C4Bit::print( int i){
   print(tmp);
 }
 
+void
+LCDI2C4Bit::print(_FLASH_STRING &pstring){
+  for (uint8_t i=0; i < pstring.length(); ++i)
+    write(pstring[i]);
+}
 
 void 
 LCDI2C4Bit::setCustomCharacter(uint8_t slot, uint8_t bitmask[8])
