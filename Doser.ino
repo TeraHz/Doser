@@ -340,7 +340,8 @@ void enter_setup_mode( void )  {
 
 
   lcd.clear();
-  lcd.send_string("Remote Learning", LCD_CURS_POS_L1_HOME);
+  lcd.cursorTo(0,0);
+  lcd.print(F("Remote Learning"));
 
   idx = 0;
   while (!setup_finished) {
@@ -385,7 +386,8 @@ void enter_setup_mode( void )  {
         global_mode = 0;           // back to main 'everyday use' mode
 
         lcd.clear();
-        lcd.send_string("Abandon SETUP", LCD_CURS_POS_L1_HOME);
+        lcd.cursorTo(0,0);
+        lcd.print(F("Abandon SETUP"));
 
 
         /*
@@ -593,7 +595,8 @@ void set_pump(Pump &pump){
       tempMinHolder--;
     }
     else{
-      lcd.send_string("Cannot go under 0  ", LCD_CURS_POS_L2_HOME);
+      lcd.cursorTo(1,0);
+      lcd.print(F("Cannot go under 0   "));
       delay(700);
       lcd.clear_L2();
     }
@@ -608,7 +611,8 @@ void set_pump(Pump &pump){
       tempMinHolder-= 10;
     }
     else{
-      lcd.send_string("Cannot go under 0  ", LCD_CURS_POS_L2_HOME);
+      lcd.cursorTo(1,0);
+      lcd.print(F("Cannot go under 0   "));
       delay(700);
       lcd.clear_L2();
     }
@@ -1047,10 +1051,12 @@ void menuUseEvent(MenuUseEvent used)
       ty = t.year - 2000;
       tdw = t.dow;
       lcd.clear();
-      lcd.send_string("Use arrows to adjust", LCD_CURS_POS_L2_HOME);
+      lcd.cursorTo(1,0);
+      lcd.print(F("Use arrows to adjust"));
       sprintf(strTime,"%02d:%02d:%02d %02d/%02d/%02d %d",th, tmi, ts, tdm, tmo, ty, tdw);
-      update_temp(2,0);   
-      lcd.send_string("HH:MM:SS DD/MM/YY DW",LCD_CURS_POS_L4_HOME);
+      update_temp(2,0); 
+      lcd.cursorTo(3,0);  
+      lcd.print(F("HH:MM:SS DD/MM/YY DW"));
       set_time();
     }
     // pump1 setup
