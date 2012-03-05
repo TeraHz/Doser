@@ -366,6 +366,16 @@ LCDI2C4Bit::print(_FLASH_STRING &pstring){
     write(pstring[i]);
 }
 
+void
+LCDI2C4Bit::print(const __FlashStringHelper *ifsh){
+  const prog_char *p = (const prog_char *)ifsh;
+  while (1) {
+    unsigned char c = pgm_read_byte(p++);
+    if (c == 0) return;
+      write(c);
+  }
+}
+
 void 
 LCDI2C4Bit::setCustomCharacter(uint8_t slot, uint8_t bitmask[8])
 {

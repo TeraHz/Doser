@@ -61,6 +61,7 @@ public:
   void print( float );
   void print( int );
   void print(_FLASH_STRING&);
+  void print(const __FlashStringHelper*);
   void printL( char value[], uint8_t);
   void clear();
   void backLight( uint8_t );

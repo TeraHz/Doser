@@ -36,7 +36,6 @@
 #include "IRremote.h"
 #include "MenuBackend.h"
 #include "Pump.h"
-FLASH_STRING(edd,"Enter daily dose:");
 #define PWM_BACKLIGHT_PIN      9  // pwm-controlled LED backlight
 #define CONFIG_PIN             8  // pwm-controlled LED backlight
 #define IR_PIN                12  // Sensor data-out pin, wired direct
@@ -248,10 +247,10 @@ void loop()
       lcd.print((char*)menu.getCurrent().getName());
       if (menu.getCurrent().getRight() != 0){
         lcd.cursorTo(1,3);
-        lcd.print(">");
+        lcd.print(F(">"));
       }else{
         lcd.cursorTo(1,3);
-        lcd.print(" ");
+        lcd.print(F(" "));
       }
       first=false;
     }
@@ -312,7 +311,7 @@ void update_clock(uint8_t x, uint8_t y){
   if (global_mode == 0 || global_mode == 1){
     lcd.cursorTo(x,y);
     lcd.print(rtc.getTimeStr());
-    lcd.print("  ");
+    lcd.print(F("  "));
     lcd.print(rtc.getDateStr());
   }
 }
@@ -522,9 +521,9 @@ void pump_menu_set(Pump &pump){
   lcd.clear(); 
   lcd.cursorTo(0,0);  
   lcd.printL(pump.getDescription(), 8);
-  lcd.print("Setup");
+  lcd.print(F("Setup"));
   lcd.cursorTo(2,0);
-  lcd.print(edd);  
+  lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
   sprintf(tmp,"   %05u ml         ",pump.getDose());
   lcd.print(tmp);
@@ -538,9 +537,9 @@ void pump_menu_cal(Pump &pump){
   lcd.clear(); 
   lcd.cursorTo(0,0);  
   lcd.printL(pump.getDescription(), 8);
-  lcd.print("Calibration");
+  lcd.print(F("Calibration"));
   lcd.cursorTo(1,0);
-  lcd.print("Enter daily dose:");  
+  lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
   sprintf(tmp,"   %05u ml         ",pump.getDose());
   lcd.print(tmp);
@@ -1167,16 +1166,16 @@ void menuChangeEvent(MenuChangeEvent changed)
     if (changed.to.getLeft() == 0){
       if (changed.to.getRight() != 0){
         lcd.cursorTo(1,0);
-        lcd.print("   >                ");
+        lcd.print(F("   >                "));
       }else{
         lcd.cursorTo(1,3);
-        lcd.print(" ");
+        lcd.print(F(" "));
       }
       lcd.cursorTo(0,0);
       lcd.printL((char*)changed.to.getName(), 20);
     }else{
       lcd.cursorTo(1,3);
-      lcd.print("> ");
+      lcd.print(F("> "));
       lcd.printL((char*)changed.to.getName(), 15);
     }
   }
