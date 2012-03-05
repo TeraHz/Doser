@@ -19,14 +19,16 @@ public:
   void setDescription( char*);
   uint16_t getDose( void );
   void setDose( uint16_t );
-  void save(uint16_t ee);
-  void load(uint16_t ee);
+  void setEE(uint16_t ee);
+  void save();
+  void load(); // make sure you call setEE before you load
 
 private:
   uint8_t _pin; // which digital pin controls the pump
   uint8_t _mls; // how many ml/s does the pump move
   uint16_t _dose; // daily dose for the pump in ml
   char * _desc;
+  uint16_t _ee;
 };
 #endif
 

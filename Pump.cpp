@@ -26,7 +26,7 @@ uint8_t Pump::getMls( void ){
   return _mls;
 }
 
-void Pump::setMls( uint8_t mls){
+void Pump::setMls( uint8_t mls ){
   _mls = mls;
 }
 
@@ -34,7 +34,7 @@ char* Pump::getDescription( void ){
   return _desc;
 }
 
-void Pump::setDescription( char* desc){
+void Pump::setDescription( char* desc ){
   _desc = desc;
 }
 
@@ -43,20 +43,23 @@ uint16_t Pump::getDose( void ){
 
 }
 
-void Pump::setDose( uint16_t dose){
+void Pump::setDose( uint16_t dose ){
   _dose = dose;
 }
-
-
-void Pump::save(uint16_t ee){
-  EEPROM_writeAnything(ee, _mls);
-  EEPROM_writeAnything(ee+10, _dose);
-  EEPROM_writeAnything(ee+20, _desc);
+void Pump::setEE( uint16_t e ){
+  _ee = e;
 }
 
-void Pump::load(uint16_t ee){
-  EEPROM_readAnything(ee, _mls);
-  EEPROM_readAnything(ee+10, _dose);
-  EEPROM_readAnything(ee+20, _desc);
+
+void Pump::save(){
+  EEPROM_writeAnything(_ee, _mls);
+  EEPROM_writeAnything(_ee+10, _dose);
+  EEPROM_writeAnything(_ee+20, _desc);
+}
+
+void Pump::load(){
+  EEPROM_readAnything(_ee, _mls);
+  EEPROM_readAnything(_ee+10, _dose);
+  EEPROM_readAnything(_ee+20, _desc);
   
 }

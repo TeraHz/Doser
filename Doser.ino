@@ -24,6 +24,8 @@
 // has to be the last entry in this list
 #define IFC_KEY_SENTINEL       7  // this must always be the last in the list
 #define MAX_FUNCTS                  IFC_KEY_SENTINEL
+#define EEPROM_SAVED        1000  // EEPROM location to save
+#define EEPROM_SAVED_VALUE     1  // EEPROM value to check; change this to reinitialize the pumps
 
 /*
  * IFC = internal function codes
@@ -44,6 +46,7 @@ uint8_t backlight_max      = 255; // color-independant 'intensity'
 uint16_t minCounter        =   0;
 uint16_t tempMinHolder     =   0; // this is used for holding the temp value in menu setting
 char strTime[20];                 // temporary array for time output
+char tmp[20];                     // temporary array for random stuff
 uint8_t psecond            =   0; // previous second
 uint8_t backupTimer        =   0; // timer that will count seconds since the ATO started. 
 uint8_t backupMax          =  10; // max seconds for timer to run. If this is reached, kill the ATO. (adjust timer based on your pump output)
@@ -90,12 +93,12 @@ LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM
 
 //Init the Pumps
 //Pump(pin number, ml/s, daily dose, dsecription);
-Pump p1 = Pump(3,0,0,"Pump 1");
+Pump p1 = Pump(3,1,0,"Pump 1");
 Pump p2 = Pump(5,0,0,"Pump 2");
 Pump p3 = Pump(6,0,0,"Pump 3");
 Pump p4 = Pump(11,0,0,"Pump 4");
 Pump p5 = Pump(10,0,0,"Pump 5");
-
+Pump * temppump;
 
 //this controls the menu backend and the event generation
 MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
@@ -150,12 +153,26 @@ void setup()
   // Enable Float switch 3 pin's pullup
   digitalWrite(ATO_FS3,HIGH);
   pinMode(ATO_RELAY, OUTPUT);
-  p1.load(100);
-  p2.load(200);
-  p3.load(300);
-  p4.load(400);
-  p5.load(500);
-
+  p1.setEE(100);
+  p2.setEE(200);
+  p3.setEE(300);
+  p4.setEE(400);
+  p5.setEE(500);
+  
+  if (EEPROM.read(EEPROM_SAVED) != EEPROM_SAVED_VALUE) {
+    p1.save();
+    p2.save();
+    p3.save();
+    p4.save();
+    p5.save();
+    EEPROM.write(EEPROM_SAVED,EEPROM_SAVED_VALUE);
+  }else{
+    p1.load();
+    p2.load();
+    p3.load();
+    p4.load();
+    p5.load();
+  }
   //start IR sensor
   irrecv.enableIRIn();
  
@@ -218,7 +235,13 @@ void loop()
   } //global_mode == 1
   else if (global_mode == 3){
     set_time();
+   //global_mode == 2
+  }else if (global_mode == 2){
+    // nothing here yet
   }//global_mode == 3
+  else if (global_mode == 4){
+    set_pump(*temppump);
+  }//global_mode == 4
   else{//we're somewhere else?
     
   }
@@ -254,16 +277,11 @@ void run_sec( void ){
 /****** PRINT TIME AT X,Y ******/
 /*******************************/
 void update_clock(uint8_t x, uint8_t y){
-  lcd.cursorTo(x,y);
-  lcd.print(rtc.getTimeStr());
-  if (global_mode == 3){
-    lcd.print(" ");
-  }else{
+  if (global_mode == 0 || global_mode == 1){
+    lcd.cursorTo(x,y);
+    lcd.print(rtc.getTimeStr());
     lcd.print("  ");
-  }
-  lcd.print(rtc.getDateStr());
-  if (global_mode == 3){
-    lcd.print(rtc.getTime().dow);
+    lcd.print(rtc.getDateStr());
   }
 }
 
@@ -464,18 +482,121 @@ void update_pump(uint8_t pump, uint8_t val){
 }
 
 
+/**************************************/
+/****** SETUP LCD FOR pump SETUP ******/
+/**************************************/
+void pump_menu_print(Pump &pump){
+  lcd.clear(); 
+  lcd.cursorTo(0,0);  
+  lcd.printL(pump.getDescription(), 13);
+  lcd.print("Setup");
+  lcd.cursorTo(2,0);
+  lcd.print("Enter daily dose:");  
+  lcd.cursorTo(3,0);
+  sprintf(tmp,"   %05u ml         ",pump.getDose());
+  lcd.print(tmp);
+}
 /**********************/
 /****** SET PUMP ******/
 /**********************/
 void set_pump(Pump &pump){
-  lcd.clear();
-  lcd.cursorTo(0,0);
-  lcd.print(pump.getDescription());
-  lcd.cursorTo(1,0);
-  lcd.print("Enter ml per day:");  
-  lcd.cursorTo(2,0);
-  lcd.print(" ");
-  lcd.print(pump.getMls());
+
+  temppump = &pump;
+  uint16_t maxml = pump.getMls()*1440;
+  key = get_input_key();
+  if (key == 0) {
+    return;
+  }
+  delay(300);
+  // key = OK
+  if (key == ir_keys[IFC_OK].hex ) {
+    Serial.println("OK");
+    pump.setDose(tempMinHolder);
+    pump.save();
+    global_mode = 0;
+    lcd.clear();
+    first=true;
+  }
+
+  // key = Up
+  else if (key == ir_keys[IFC_UP].hex){
+    if (tempMinHolder < maxml){
+      tempMinHolder++;
+    } 
+    else{
+      lcd.cursorTo(1,0);
+      sprintf(tmp,"Pump max: %05u ml/s",maxml);
+      lcd.print(tmp);
+      delay(700);
+      lcd.clear_L2();
+    }
+
+    lcd.cursorTo(3,0);
+    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    lcd.print(tmp);
+  }
+
+  // key = Down
+  else if (key == ir_keys[IFC_DOWN].hex){
+
+    if (tempMinHolder > 0){
+      tempMinHolder--;
+    }
+    else{
+      lcd.send_string("Cannot go under 0  ", LCD_CURS_POS_L2_HOME);
+      delay(700);
+      lcd.clear_L2();
+    }
+    lcd.cursorTo(3,0);
+    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    lcd.print(tmp);
+  }
+
+  // key = Left
+  else if (key == ir_keys[IFC_LEFT].hex){
+    if (tempMinHolder > 10){
+      tempMinHolder-= 10;
+    }
+    else{
+      lcd.send_string("Cannot go under 0  ", LCD_CURS_POS_L2_HOME);
+      delay(700);
+      lcd.clear_L2();
+    }
+    lcd.cursorTo(3,0);
+    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    lcd.print(tmp);
+  }
+
+  // key = Right
+  else if (key == ir_keys[IFC_RIGHT].hex){ 
+   if (tempMinHolder < maxml-10){
+      tempMinHolder+=10;
+    } 
+    else{
+      lcd.cursorTo(1,0);
+      sprintf(tmp,"Pump max: %05u ml/s",maxml);
+      lcd.print(tmp);
+      delay(700);
+      lcd.clear_L2();
+    }
+
+    lcd.cursorTo(3,0);
+    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    lcd.print(tmp);
+  }
+
+  // key = Cancel
+  else if (key == ir_keys[IFC_CANCEL].hex){
+    lcd.clear();
+    global_mode = 0;
+    delay (100);
+    first = true;
+  }else{
+    Serial.println("unknown key");
+  }
+
+  delay(100);
+  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
 }
 
 /****************************/
@@ -537,7 +658,6 @@ void do_ATO(){
 //    digitalWrite(redLED,HIGH);
   }
 }
-
 
 /**************************/
 /****** SET THE TIME ******/
@@ -868,6 +988,7 @@ void menuUseEvent(MenuUseEvent used)
 //		Serial.println("menuUseEvent found Dealy (D)");
 //	}
 
+    // clock setup
     if (used.item == mi_clock){
       global_mode=3;
       Time t = rtc.getTime();
@@ -884,42 +1005,84 @@ void menuUseEvent(MenuUseEvent used)
       update_temp(2,0);   
       lcd.send_string("HH:MM:SS DD/MM/YY DW",LCD_CURS_POS_L4_HOME);
       set_time();
-    }else if(used.item == mi_pump1_set){
+    }
+    // pump1 setup
+    else if(used.item == mi_pump1_set){
       global_mode = 4;
+      pump_menu_print(p1);
+      tempMinHolder = p1.getDose();
       set_pump(p1);
-    }else if(used.item == mi_pump2_set){
+    }
+    // pump2 setup
+    else if(used.item == mi_pump2_set){
+      pump_menu_print(p2);
+      tempMinHolder = p2.getDose();
       set_pump(p2);
-    }else if(used.item == mi_pump3_set){
+    }
+    // pump3 setup
+    else if(used.item == mi_pump3_set){
+      pump_menu_print(p3);
+      tempMinHolder = p3.getDose();
       set_pump(p3);
-    }else if(used.item == mi_pump4_set){
+    }
+    // pump4 setup
+    else if(used.item == mi_pump4_set){
+      pump_menu_print(p4);
+      tempMinHolder = p4.getDose();
       set_pump(p4);
-    }else if(used.item == mi_pump5_set){
+    }
+    // pump5 setup
+    else if(used.item == mi_pump5_set){
+      pump_menu_print(p5);
+      tempMinHolder = p5.getDose();
       set_pump(p5);
-    }else if(used.item == mi_pump1_calibrate){
+    }
+    // pump1 calibration
+    else if(used.item == mi_pump1_calibrate){
       cal_pump(p1);
-    }else if(used.item == mi_pump2_calibrate){
+    }
+    // pump2 calibration
+    else if(used.item == mi_pump2_calibrate){
       cal_pump(p2);
-    }else if(used.item == mi_pump3_calibrate){
+    }
+    // pump3 calibration
+    else if(used.item == mi_pump3_calibrate){
       cal_pump(p3);
-    }else if(used.item == mi_pump4_calibrate){
+    }
+    // pump4 calibration
+    else if(used.item == mi_pump4_calibrate){
       cal_pump(p4);
-    }else if(used.item == mi_pump5_calibrate){
+    }
+    // pump5 calibration
+    else if(used.item == mi_pump5_calibrate){
       cal_pump(p5);
-    }else if(used.item == mi_pump1_review){
+    }
+    // pump1 review
+    else if(used.item == mi_pump1_review){
       review_pump(p1);
-    }else if(used.item == mi_pump2_review){
+    }
+    // pump2 review
+    else if(used.item == mi_pump2_review){
       review_pump(p1);
-    }else if(used.item == mi_pump3_review){
+    }
+    // pump3 review
+    else if(used.item == mi_pump3_review){
       review_pump(p1);
-    }else if(used.item == mi_pump4_review){
+    }
+    // pump4 review
+    else if(used.item == mi_pump4_review){
       review_pump(p1);
-    }else if(used.item == mi_pump5_review){
+    }
+    // pump5 review
+    else if(used.item == mi_pump5_review){
       review_pump(p1);
-    }else if(used.item == mi_ATO_set){
-    }else if(used.item == settings || used.item == mi_pump1 || used.item == mi_pump2 || used.item == mi_pump3 || used.item == mi_pump4 || used.item == mi_pump5){
+    }
+    // Auto TopOff setup
+    else if(used.item == mi_ATO_set){
+    }
+    //Menu categories.
+    else if(used.item == settings || used.item == mi_pump1 || used.item == mi_pump2 || used.item == mi_pump3 || used.item == mi_pump4 || used.item == mi_pump5){
       menu.moveRight();
-    }else if(used.item == mi_ATO_set){
-    }else if(used.item == mi_ATO_set){
     }else {
 //      lcd.cursorTo(2,0);
 //      lcd.print("Used ");
