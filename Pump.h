@@ -35,8 +35,8 @@ public:
   ~Pump();
   uint8_t getPin( void );
   void setPin( uint8_t );
-  uint8_t getMls( void );
-  void setMls( uint8_t );
+  float getMlm( void );
+  void setMlm( float );
   char* getDescription( void );
   void setDescription( char*);
   uint16_t getDose( void );
@@ -47,7 +47,7 @@ public:
 
 private:
   uint8_t _pin; // which digital pin controls the pump
-  uint8_t _mls; // how many ml/s does the pump move
+  float _mlm; // how many ml/s does the pump move
   uint16_t _dose; // daily dose for the pump in ml
   char * _desc;
   uint16_t _ee;

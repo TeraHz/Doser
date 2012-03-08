@@ -45,8 +45,8 @@
 #define ATO_RELAY              4  // Digital 4 - 5V relay for pump
 
 // has to be the last entry in this list
-#define IFC_KEY_SENTINEL       7  // this must always be the last in the list
-#define MAX_FUNCTS                  IFC_KEY_SENTINEL
+#define K_KEY_SENTINEL       7  // this must always be the last in the list
+#define MAX_FUNCTS                  K_KEY_SENTINEL
 #define EEPROM_SAVED        1000  // EEPROM location to save
 #define EEPROM_SAVED_VALUE     1  // EEPROM value to check; change this to reinitialize the pumps
 
@@ -56,13 +56,13 @@
  * these are logical mappings of physical IR keypad keys to internal callable functions.
  * its the way we soft-map keys on a remote to things that happen when you press those keys.
  */
-#define IFC_MENU               0  // enter menu mode
-#define IFC_UP                 1  // up-arrow
-#define IFC_DOWN               2  // down-arrow
-#define IFC_LEFT               3  // left-arrow
-#define IFC_RIGHT              4  // right-arrow
-#define IFC_OK                 5  // Select/OK/Confirm btn
-#define IFC_CANCEL             6  // Cancel/back/exit
+#define K_MENU               0  // enter menu mode
+#define K_UP                 1  // up-arrow
+#define K_DOWN               2  // down-arrow
+#define K_LEFT               3  // left-arrow
+#define K_RIGHT              4  // right-arrow
+#define K_OK                 5  // Select/OK/Confirm btn
+#define K_CANCEL             6  // Cancel/back/exit
 
 uint8_t backlight_min      = 255; // color-independant 'intensity'
 uint8_t backlight_max      = 255; // color-independant 'intensity'
@@ -70,7 +70,7 @@ uint16_t minCounter        =   0;
 uint16_t tempMinHolder     =   0; // this is used for holding the temp value in menu setting
 char strTime[20];                 // temporary array for time output
 char tmp[20];                     // temporary array for random stuff
-uint8_t psecond            =   0; // previous second
+uint8_t psecond            =   0; // Previous second
 uint8_t backupTimer        =   0; // timer that will count seconds since the ATO started. 
 uint8_t backupMax          =  10; // max seconds for timer to run. If this is reached, kill the ATO. (adjust timer based on your pump output)
 uint8_t sPos               =   1; // position for setting
@@ -79,9 +79,20 @@ uint8_t ATO_FS1_STATE      =   0; // State holder for flat switch 1
 uint8_t ATO_FS2_STATE      =   0; // State holder for flat switch 2
 uint8_t ATO_FS3_STATE      =   0; // State holder for flat switch 3
 
-uint8_t val[] = {0,255}; 
+uint8_t val[] = {0,255};
+
 uint8_t i, global_mode,ts, tmi, th, tdw, tdm, tmo, ty;//variables for time
-uint16_t key;
+uint16_t key;                     // Store current hex of the IR key
+uint8_t calPage            =   0; // Which page on the calibration instruction are we on
+uint32_t calTime           =   0; // Store time it took to move X amount of water
+float rate                 = 0.0; // rate for current pump
+boolean calibrated       = false; // flag that we've gone through calibration
+
+char * calibration_instructions[6] = {
+            "Prepare 250ml water.","Prime line.         ",
+            "Submerge line input.","Press OK to start.  ",
+            "Press OK when all   ","water is gone       "};
+
 boolean first = true;
 // this is a temporary holding area that we write to, key by key; and then dump all at once when the user finishes the last one
 uint16_t ir_key_bank1[MAX_FUNCTS+1];
@@ -95,14 +106,14 @@ struct _ir_keys {
 }
 
 ir_keys[MAX_FUNCTS+1] = {
-  { 0x00, IFC_MENU,          "Menu"           }
- ,{ 0x00, IFC_UP,            "Up Arrow"       }
- ,{ 0x00, IFC_DOWN,          "Down Arrow"     }
- ,{ 0x00, IFC_LEFT,          "Left Arrow"     }
- ,{ 0x00, IFC_RIGHT,         "Right Arrow"    }
- ,{ 0x00, IFC_OK,            "Confirm/Select" }
- ,{ 0x00, IFC_CANCEL,        "Back/Cancel"    }
- ,{ 0x00, IFC_KEY_SENTINEL,  "NULL"           }
+  { 0x00, K_MENU,          "Menu"           }
+ ,{ 0x00, K_UP,            "Up Arrow"       }
+ ,{ 0x00, K_DOWN,          "Down Arrow"     }
+ ,{ 0x00, K_LEFT,          "Left Arrow"     }
+ ,{ 0x00, K_RIGHT,         "Right Arrow"    }
+ ,{ 0x00, K_OK,            "Confirm/Select" }
+ ,{ 0x00, K_CANCEL,        "Back/Cancel"    }
+ ,{ 0x00, K_KEY_SENTINEL,  "NULL"           }
 };
 
 //Init the Real Time Clock
@@ -257,20 +268,20 @@ void loop()
     show_menu();
   } //global_mode == 1
   
-  else if (global_mode == 3){
-    set_time();
+  else if (global_mode == 2){
+    cal_pump();
   }//global_mode == 2
   
-  else if (global_mode == 2){
-    // calibrate here
+  else if (global_mode == 3){
+    set_pump();
   }//global_mode == 3
   
   else if (global_mode == 4){
-    set_pump(*temppump);
+    set_time();
   }//global_mode == 4
   
   else if (global_mode == 5){
-    //review pump here
+    handle_review_pump();
   }//global_mode == 5
   
   else{//we're somewhere else?
@@ -298,9 +309,31 @@ void run_sec( void ){
     //  lcd.print("  ");
 //    analogWrite(pumps[psecond%5],val[psecond%2]);
   }
-  if (global_mode!=3){
-    update_clock(3,0);
+  update_clock(3,0);
+  
+#ifdef DEBUG
+  switch (global_mode){
+    case 0:
+      Serial.println(F("Global mode"));
+      break;
+    case 1:
+      Serial.println(F("Menu"));
+      break;
+    case 2:
+      Serial.println(F("Calibration"));
+      break;
+    case 3:
+      Serial.println(F("Set Dose"));
+      break;
+    case 4:
+      Serial.println(F("Set Time"));
+      break;
+    case 5:
+      Serial.println(F("Review"));
+      break;
   }
+#endif
+  Serial.print("Mem: "); Serial.println(availableMemory());
 }
 
 
@@ -308,7 +341,7 @@ void run_sec( void ){
 /****** PRINT TIME AT X,Y ******/
 /*******************************/
 void update_clock(uint8_t x, uint8_t y){
-  if (global_mode == 0 || global_mode == 1){
+  if (global_mode == 0 || global_mode == 1 || global_mode == 5){
     lcd.cursorTo(x,y);
     lcd.print(rtc.getTimeStr());
     lcd.print(F("  "));
@@ -457,7 +490,6 @@ done_learn_mode:
 /****** GET INFRARED KEY ******/
 /******************************/
 long get_input_key( void ) {
-//  Serial.println("get_input_key()");
   long my_result;
   long last_value = results.value;   // save the last one in case the new one is a 'repeat code'
 
@@ -465,29 +497,24 @@ long get_input_key( void ) {
 
     // fix repeat codes (make them look like truly repeated keys)
     if (results.value == 0xffffffff) {
-//  Serial.println(1);
       if (last_value != 0xffffffff) {  
         results.value = last_value;
-//          Serial.println(2);
       } 
       else {
-//          Serial.println(3);
         results.value = 0;
       }
 
     }
 
     if (results.value != 0xffffffff) {
-//        Serial.println(4);
       my_result = results.value;
     } 
     else {
-//        Serial.println(5);
       my_result = last_value;  // 0;
     }
 
     irrecv.resume();    // we just consumed one key; 'start' to receive the next value
-      return results.value; //my_result;
+    return results.value; //my_result;
   }
   else {
     return 0;   // no key pressed
@@ -514,12 +541,67 @@ void update_pump(uint8_t pump, uint8_t val){
 //  lcd.print("  ");
 }
 
+/********************************************/
+/****** SETUP LCD FOR pump CALIBRATION ******/
+/********************************************/
+void pump_menu_cal(Pump &pump){
+  lcd.clear();
+  lcd.cursorTo(0,0);  
+  lcd.printL(pump.getDescription(), 8);
+  lcd.print(F("Calibration"));
+  temppump = &pump;
+  global_mode = 2;
+  first = true;
+  calPage = 0;
+  update_cal_screen();
+  cal_pump();
+}
+
+/********************************************/
+/****** PRINT CURRENT PAGE OF CAL INST ******/
+/********************************************/
+void update_cal_screen(){
+  lcd.clear_L4();   
+  if (calPage !=3){
+    lcd.cursorTo(1,0);
+    lcd.print(calibration_instructions[calPage*2]);  
+    lcd.cursorTo(2,0);
+    lcd.print(calibration_instructions[calPage*2+1]);
+    if (calPage != 0 && first){
+      lcd.cursorTo(3,0);
+      lcd.print(F("<Previous"));
+    }
+    if (calPage != 2){
+      lcd.cursorTo(3,15);
+      lcd.print(F("Next>"));
+    }
+  }else{
+    lcd.cursorTo(1,0);
+    lcd.print(F("Stats:              "));
+    lcd.cursorTo(2,0);
+
+    rate = 250.0*60.0/calTime;
+    uint8_t frate = (uint8_t)rate; // compute the whole part of the float
+    uint16_t prate = (rate - frate)*100; // compute up to 2 decimal digits accuracy
+    sprintf(tmp,"t:%04ds ",calTime);
+    lcd.print(tmp);
+    sprintf(tmp,"r:%03u.",frate);
+    lcd.print(tmp);
+    sprintf(tmp,"%02uml/m", prate);
+    lcd.print(tmp);
+    lcd.cursorTo(3,0);
+    lcd.print(F("Press OK to store   "));
+  }
+}
+
 
 /**************************************/
 /****** SETUP LCD FOR pump SETUP ******/
 /**************************************/
 void pump_menu_set(Pump &pump){
+  global_mode = 3;
   tempMinHolder = pump.getDose();
+  temppump = &pump;
   lcd.clear(); 
   lcd.cursorTo(0,0);  
   lcd.printL(pump.getDescription(), 8);
@@ -529,49 +611,30 @@ void pump_menu_set(Pump &pump){
   lcd.cursorTo(3,0);
   sprintf(tmp,"   %05u ml         ",pump.getDose());
   lcd.print(tmp);
+  set_pump();
 }
-
-/********************************************/
-/****** SETUP LCD FOR pump CALIBRATION ******/
-/********************************************/
-void pump_menu_cal(Pump &pump){
-  tempMinHolder = pump.getMls();
-  lcd.clear(); 
-  lcd.cursorTo(0,0);  
-  lcd.printL(pump.getDescription(), 8);
-  lcd.print(F("Calibration"));
-  lcd.cursorTo(1,0);
-  lcd.print(F("Enter daily dose:"));  
-  lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05u ml         ",pump.getDose());
-  lcd.print(tmp);
-}
-
 
 /**********************/
 /****** SET PUMP ******/
 /**********************/
-void set_pump(Pump &pump){
-
-  temppump = &pump;
-  uint16_t maxml = pump.getMls()*1440;
+void set_pump(){
+  uint16_t maxml = temppump->getMlm()*1440;
   key = get_input_key();
   if (key == 0) {
     return;
   }
-  delay(300);
+  delay(50);
   // key = OK
-  if (key == ir_keys[IFC_OK].hex ) {
-    Serial << F("OK\r\n");
-    pump.setDose(tempMinHolder);
-    pump.save();
+  if (key == ir_keys[K_OK].hex ) {
+    temppump->setDose(tempMinHolder);
+    temppump->save();
     global_mode = 0;
     lcd.clear();
     first=true;
   }
 
   // key = Up
-  else if (key == ir_keys[IFC_UP].hex){
+  else if (key == ir_keys[K_UP].hex){
     if (tempMinHolder < maxml){
       tempMinHolder++;
     } 
@@ -589,7 +652,7 @@ void set_pump(Pump &pump){
   }
 
   // key = Down
-  else if (key == ir_keys[IFC_DOWN].hex){
+  else if (key == ir_keys[K_DOWN].hex){
 
     if (tempMinHolder > 0){
       tempMinHolder--;
@@ -606,7 +669,7 @@ void set_pump(Pump &pump){
   }
 
   // key = Left
-  else if (key == ir_keys[IFC_LEFT].hex){
+  else if (key == ir_keys[K_LEFT].hex){
     if (tempMinHolder > 10){
       tempMinHolder-= 10;
     }
@@ -622,7 +685,7 @@ void set_pump(Pump &pump){
   }
 
   // key = Right
-  else if (key == ir_keys[IFC_RIGHT].hex){ 
+  else if (key == ir_keys[K_RIGHT].hex){ 
    if (tempMinHolder < maxml-10){
       tempMinHolder+=10;
     } 
@@ -640,30 +703,138 @@ void set_pump(Pump &pump){
   }
 
   // key = Cancel
-  else if (key == ir_keys[IFC_CANCEL].hex){
+  else if (key == ir_keys[K_CANCEL].hex){
     lcd.clear();
     global_mode = 0;
     delay (100);
     first = true;
   }else{
+#ifdef DEBUG
     Serial << F("unknown key") << "\n\r";
+#endif
   }
 
   delay(100);
   irrecv.resume(); // we just consumed one key; 'start' to receive the next value
 }
 
+
 /****************************/
 /****** CALIBRATE PUMP ******/
 /****************************/
-void cal_pump(Pump &pump){
+void cal_pump(){
+    key = get_input_key();
+  if (key == 0) {
+    return;
+  }
+  delay(50);
+  // key = OK
+  if (key == ir_keys[K_OK].hex ) {
+    Time tmp = rtc.getTime();
+    if (first){
+      if (calibrated){
+        temppump->setMlm(rate);
+        temppump->save();
+        calibrated=false;
+        calPage = 0;
+        global_mode = 0;
+        lcd.clear();
+      }else{
+        calTime = tmp.sec+tmp.min*60+tmp.hour*60*60;
+        first = false;
+        calibrated = false;
+        calPage = 2;
+        update_cal_screen();
+      }
+    }else{
+      calTime = tmp.sec+tmp.min*60+tmp.hour*60*60 - calTime;
+      first = true;
+      calibrated  = true;
+      calPage = 3;
+      update_cal_screen();
+    }
+  }
+
+  // key = Left
+  else if (key == ir_keys[K_LEFT].hex){
+   if (calPage >0 && first){
+     calPage--;
+     update_cal_screen();
+   }
+  }
+
+  // key = Right
+  else if (key == ir_keys[K_RIGHT].hex){ 
+    if (calPage < 2){
+      calPage++;
+      update_cal_screen();
+    }
+  }
+
+  // key = Cancel
+  else if (key == ir_keys[K_CANCEL].hex){
+    lcd.clear();
+    global_mode = 0;
+    first = true;
+  }else{
+#ifdef DEBUG
+    Serial << F("unknown key") << "\n\r";
+#endif
+  }
+
+  delay(100);
+  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
   
 }
 
+/*********************************/
+/****** PREPARE REVIEW PUMP ******/
+/*********************************/
+void prep_review_pump(Pump &pump){
+  global_mode = 5;
+  lcd.clear_L2();
+  lcd.clear_L3();
+  tempMinHolder = pump.getDose();
+  lcd.cursorTo(0,8);
+  lcd.print(F("Review"));
+  lcd.cursorTo(1,0);
+  lcd.print(F("ml per minute:"));
+  lcd.print(pump.getMlm());  
+  lcd.cursorTo(2,0);
+  lcd.print(F("daily dose: "));
+  lcd.print((int)pump.getDose());
+  lcd.print("ml");
+  handle_review_pump();
+}
 /*************************/
 /****** REVIEW PUMP ******/
 /*************************/
-void review_pump(Pump &pump){
+void handle_review_pump(){
+  key = get_input_key();
+  if (key == 0) {
+    return;
+  }
+  delay(50);
+  // key = Cancel or OK 
+  if (key == ir_keys[K_CANCEL].hex || key == ir_keys[K_OK].hex){
+    lcd.clear_L1();
+    lcd.clear_L2();
+    lcd.clear_L3();
+    global_mode = 0;
+    delay (100);
+    first = true;
+  }else{
+#ifdef DEBUG
+    Serial.print("if (key[");
+    Serial.print(key);
+    Serial.print("] == ir_keys[K_CANCEL].hex[");
+    Serial.print(ir_keys[K_CANCEL].hex);
+    Serial.println("])");
+#endif
+  }
+
+  delay(100);
+    
   
 }
 
@@ -714,16 +885,13 @@ void do_ATO(){
 /****** SET THE TIME ******/
 /**************************/
 void set_time( void ){
-//  Serial.println("-- SET_TIME getkey --");
   key = get_input_key();
   if (key == 0) {
     return;
   }
-  delay(200);
-
+  delay(50);
   // key = OK
-  if (key == ir_keys[IFC_OK].hex ) {
-//    Serial.println("-- SET_TIME OK --");
+  if (key == ir_keys[K_OK].hex ) {
     // Set the clock to run-mode, and disable the write protection
     rtc.halt(false);
     rtc.writeProtect(false);
@@ -736,8 +904,7 @@ void set_time( void ){
   }
 
   // key = Up
-  else if (key == ir_keys[IFC_UP].hex){
-//    Serial.println("-- UP --");
+  else if (key == ir_keys[K_UP].hex){
     if (sPos == 1){
       if (th < 23) {
         th++;
@@ -801,8 +968,7 @@ void set_time( void ){
 
 
   // key = Down
-  else if (key == ir_keys[IFC_DOWN].hex){ 
-//    Serial.println("-- DOWN --");
+  else if (key == ir_keys[K_DOWN].hex){ 
     if (sPos == 1){
       if (th > 0) {
         th--;
@@ -866,8 +1032,7 @@ void set_time( void ){
 
 
   // key = Left
-  else if (key == ir_keys[IFC_LEFT].hex){
-//    Serial.println("-- LEFT --");
+  else if (key == ir_keys[K_LEFT].hex){
     if (sPos > 1) {
       sPos--;
     } 
@@ -879,8 +1044,7 @@ void set_time( void ){
 
 
   // key = Right
-  else if (key == ir_keys[IFC_RIGHT].hex){
-//    Serial.println("-- RIGHT --"); 
+  else if (key == ir_keys[K_RIGHT].hex){
     if (sPos < 7) {
       sPos++;
     } 
@@ -891,8 +1055,7 @@ void set_time( void ){
   }
 
   // key = Cancel
-  else if (key == ir_keys[IFC_CANCEL].hex){
-//    Serial.println("-- CANCEL --");
+  else if (key == ir_keys[K_CANCEL].hex){
     lcd.clear();
     global_mode = 0;
     delay (100);
@@ -901,17 +1064,17 @@ void set_time( void ){
 #ifdef DEBUG
     Serial.print(key,HEX);
     Serial.print(":");
-    Serial.print(ir_keys[IFC_UP].hex,HEX);
+    Serial.print(ir_keys[K_UP].hex,HEX);
     Serial.print(" ");
-    Serial.print(ir_keys[IFC_DOWN].hex,HEX);
+    Serial.print(ir_keys[K_DOWN].hex,HEX);
     Serial.print(" ");
-    Serial.print(ir_keys[IFC_LEFT].hex,HEX);
+    Serial.print(ir_keys[K_LEFT].hex,HEX);
     Serial.print(" ");
-    Serial.print(ir_keys[IFC_RIGHT].hex,HEX);
+    Serial.print(ir_keys[K_RIGHT].hex,HEX);
     Serial.print(" ");
-    Serial.print(ir_keys[IFC_OK].hex,HEX);
+    Serial.print(ir_keys[K_OK].hex,HEX);
     Serial.print(" ");
-    Serial.print(ir_keys[IFC_CANCEL].hex,HEX);
+    Serial.print(ir_keys[K_CANCEL].hex,HEX);
     Serial.println();
 #endif
   }
@@ -926,44 +1089,48 @@ void onKeyPress( void )
 {
 
   key = get_input_key();
+#ifdef DEBUG
   Serial.print(key,HEX);
+#endif
   if (key == 0) {
     return;   // try again to sync up on an IR start-pulse
   }
-
+  delay(50);
   // key = MENU
-  else if (key == ir_keys[IFC_MENU].hex) {
+  if (key == ir_keys[K_MENU].hex) {
     global_mode = 1;
   }
 
   // key = UP
-  else if (key == ir_keys[IFC_UP].hex) {
+  else if (key == ir_keys[K_UP].hex) {
   }
 
   // key = DOWN
-  else if (key == ir_keys[IFC_DOWN].hex) {
+  else if (key == ir_keys[K_DOWN].hex) {
   }
 
   // key = LEFT
-  else if (key == ir_keys[IFC_LEFT].hex) {
+  else if (key == ir_keys[K_LEFT].hex) {
   }
 
   // key = RIGHT
-  else if (key == ir_keys[IFC_RIGHT].hex) {
+  else if (key == ir_keys[K_RIGHT].hex) {
   }
 
   // key = OK
-  else if (key == ir_keys[IFC_OK].hex) {
+  else if (key == ir_keys[K_OK].hex) {
     //do something
   }
 
   // key = Cancel
-  else if (key == ir_keys[IFC_CANCEL].hex) {
+  else if (key == ir_keys[K_CANCEL].hex) {
     //do something
   }
 
   else{
-//    Serial.println("unsupported");
+#ifdef DEBUG
+    Serial.println("unsupported");
+#endif
   }
 
   delay(100);
@@ -974,41 +1141,33 @@ void onKeyPress( void )
 /****** MAIN MENU ******/
 /***********************/
 void show_menu( void ) {
-  Serial << F("In MENU\r\n");
   key = get_input_key();
   if (key == 0) {
     return;
   }
-//  Serial.print("Key is ");
-//  Serial.println(key,HEX);
-delay(100);
-  if (key == ir_keys[IFC_OK].hex ) {
-//    Serial.println("OK");
+  delay(50);
+  // key = OK
+  if (key == ir_keys[K_OK].hex ) {
     menu.use();
     
   }
-  else if (key == ir_keys[IFC_DOWN].hex){
-//    Serial.println("DOWN");
+  else if (key == ir_keys[K_DOWN].hex){
     menu.moveUp();
     delay (100);
   }
-  else if (key == ir_keys[IFC_UP].hex){ 
-//    Serial.println("UP");
+  else if (key == ir_keys[K_UP].hex){ 
     menu.moveDown();
     delay (100);
   }
-  else if (key == ir_keys[IFC_LEFT].hex){
-//    Serial.println("LEFT");
+  else if (key == ir_keys[K_LEFT].hex){
     menu.moveLeft();
     delay (100);
   }
-  else if (key == ir_keys[IFC_RIGHT].hex){ 
-//    Serial.println("RIGHT");
+  else if (key == ir_keys[K_RIGHT].hex){ 
     menu.moveRight();
     delay (100);
   }
-  else if (key == ir_keys[IFC_CANCEL].hex){
-//    Serial.println("BACK");
+  else if (key == ir_keys[K_CANCEL].hex){
     if (menu.getCurrent().getLeft() == 0){
       lcd.clear_L1();
       lcd.clear_L2();
@@ -1034,14 +1193,9 @@ delay(100);
 /***********************************/
 void menuUseEvent(MenuUseEvent used)
 {
-//	if (used.item == setDelay) //comparison agains a known item
-//	{
-//		Serial.println("menuUseEvent found Dealy (D)");
-//	}
-
     // clock setup
     if (used.item == mi_clock){
-      global_mode=3;
+      global_mode=4;
       Time t = rtc.getTime();
       th = t.hour;
       tmi = t.min;
@@ -1061,83 +1215,63 @@ void menuUseEvent(MenuUseEvent used)
     }
     // pump1 setup
     else if(used.item == mi_pump1_set){
-      global_mode = 4;
       pump_menu_set(p1);
-      set_pump(p1);
     }
     // pump2 setup
     else if(used.item == mi_pump2_set){
-      global_mode = 4;
       pump_menu_set(p2);
-      set_pump(p2);
     }
     // pump3 setup
     else if(used.item == mi_pump3_set){
-      global_mode = 4;
       pump_menu_set(p3);
-      set_pump(p3);
     }
     // pump4 setup
     else if(used.item == mi_pump4_set){
       pump_menu_set(p4);
-      set_pump(p4);
     }
     // pump5 setup
     else if(used.item == mi_pump5_set){
-      global_mode = 4;
       pump_menu_set(p5);
-      set_pump(p5);
     }
     // pump1 calibration
     else if(used.item == mi_pump1_calibrate){
-      global_mode = 2;
-
-      cal_pump(p1);
+      pump_menu_cal(p1);
     }
     // pump2 calibration
     else if(used.item == mi_pump2_calibrate){
-      global_mode = 2;
-      cal_pump(p2);
+      pump_menu_cal(p2);
     }
     // pump3 calibration
     else if(used.item == mi_pump3_calibrate){
-      global_mode = 2;
-      cal_pump(p3);
+      pump_menu_cal(p3);
     }
     // pump4 calibration
     else if(used.item == mi_pump4_calibrate){
-      global_mode = 2;
-      cal_pump(p4);
+      pump_menu_cal(p4);
     }
     // pump5 calibration
     else if(used.item == mi_pump5_calibrate){
-      global_mode = 2;
-      cal_pump(p5);
+      pump_menu_cal(p5);
     }
     // pump1 review
     else if(used.item == mi_pump1_review){
-      global_mode = 5;
-      review_pump(p1);
+      prep_review_pump(p1);
     }
     // pump2 review
     else if(used.item == mi_pump2_review){
-      global_mode = 5;
-      review_pump(p2);
+      prep_review_pump(p2);
     }
     // pump3 review
     else if(used.item == mi_pump3_review){
-      global_mode = 5;
-      review_pump(p3);
+      prep_review_pump(p2);
     }
     // pump4 review
     else if(used.item == mi_pump4_review){
-      global_mode = 5;
-      review_pump(p4);
+      prep_review_pump(p3);
     }
     // pump5 review
     else if(used.item == mi_pump5_review){
-      global_mode = 5;
-      review_pump(p5);
+      prep_review_pump(p4);
     }
     // Auto TopOff setup
     else if(used.item == mi_ATO_set){
@@ -1163,11 +1297,12 @@ void menuUseEvent(MenuUseEvent used)
 /*****************************/
 void menuChangeEvent(MenuChangeEvent changed)
 {
-//  Serial.print("Menu change ");
-//  Serial.print(changed.from.getName());
-//  Serial.print("->");
-//  Serial.println(changed.to.getName());
-
+#ifdef DEBUG
+  Serial.print(F("Menu change "));
+  Serial.print(changed.from.getName());
+  Serial.print("->");
+  Serial.println(changed.to.getName());
+#endif
   if (global_mode == 1){
     if (changed.to.getLeft() == 0){
       if (changed.to.getRight() != 0){
@@ -1273,4 +1408,11 @@ void menuSetup()
   menu.moveDown();
 }
 
-
+int availableMemory() 
+{
+  int size = 1024;
+  byte *buf;
+  while ((buf = (byte *) malloc(--size)) == NULL);
+  free(buf);
+  return size;
+}

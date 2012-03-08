@@ -24,10 +24,10 @@
 #include "EEPROMAnything.h"
 
 
-Pump::Pump( uint8_t pin, uint8_t mls, uint16_t dose, char* desc) {
+Pump::Pump( uint8_t pin, uint8_t mlm, uint16_t dose, char* desc) {
   pinMode(pin, OUTPUT);
   _pin = pin;
-  _mls = mls;
+  _mlm = mlm;
   _dose = dose;
   _desc = desc;
 }
@@ -44,12 +44,12 @@ void Pump::setPin( uint8_t pin){
   _pin = pin;
 }
 
-uint8_t Pump::getMls( void ){
-  return _mls;
+float Pump::getMlm( void ){
+  return _mlm;
 }
 
-void Pump::setMls( uint8_t mls ){
-  _mls = mls;
+void Pump::setMlm( float mlm ){
+  _mlm = mlm;
 }
 
 char* Pump::getDescription( void ){
@@ -74,13 +74,13 @@ void Pump::setEE( uint16_t e ){
 
 
 void Pump::save(){
-  EEPROM_writeAnything(_ee, _mls);
+  EEPROM_writeAnything(_ee, _mlm);
   EEPROM_writeAnything(_ee+10, _dose);
   EEPROM_writeAnything(_ee+20, _desc);
 }
 
 void Pump::load(){
-  EEPROM_readAnything(_ee, _mls);
+  EEPROM_readAnything(_ee, _mlm);
   EEPROM_readAnything(_ee+10, _dose);
   EEPROM_readAnything(_ee+20, _desc);
   
