@@ -171,7 +171,9 @@ Time t;
 
 void setup()
 {
+#ifdef DEBUG
   Serial.begin(9600);
+#endif
 //  Serial.println("Hello");
   Wire.begin();
   // Enable config pin's pullup
@@ -609,7 +611,7 @@ void pump_menu_set(Pump &pump){
   lcd.cursorTo(2,0);
   lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05u ml         ",pump.getDose());
+  sprintf(tmp,"   %05u ml",pump.getDose()*pump.getMlm());
   lcd.print(tmp);
   set_pump();
 }
@@ -618,7 +620,7 @@ void pump_menu_set(Pump &pump){
 /****** SET PUMP ******/
 /**********************/
 void set_pump(){
-  uint16_t maxml = temppump->getMlm()*1440;
+  float mlm = temppump->getMlm();
   key = get_input_key();
   if (key == 0) {
     return;
@@ -635,19 +637,20 @@ void set_pump(){
 
   // key = Up
   else if (key == ir_keys[K_UP].hex){
-    if (tempMinHolder < maxml){
+    if (tempMinHolder < 1440){
+      lcd.clear_L2();
       tempMinHolder++;
     } 
     else{
+      tempMinHolder = 1440;
       lcd.cursorTo(1,0);
-      sprintf(tmp,"Pump max: %05u ml/s",maxml);
+      sprintf(tmp,"Pump max: %luml",(long)(mlm*1440));
       lcd.print(tmp);
       delay(700);
       lcd.clear_L2();
     }
-
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
@@ -658,47 +661,46 @@ void set_pump(){
       tempMinHolder--;
     }
     else{
+      tempMinHolder = 0;
       lcd.cursorTo(1,0);
-      lcd.print(F("Cannot go under 0   "));
-      delay(700);
-      lcd.clear_L2();
+      lcd.print(F("Turning pump OFF    "));
     }
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
   // key = Left
   else if (key == ir_keys[K_LEFT].hex){
     if (tempMinHolder > 10){
-      tempMinHolder-= 10;
+      tempMinHolder-=10;
     }
     else{
+      tempMinHolder = 0;
       lcd.cursorTo(1,0);
-      lcd.print(F("Cannot go under 0   "));
-      delay(700);
-      lcd.clear_L2();
+      lcd.print(F("Turning pump OFF    "));
     }
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
   // key = Right
   else if (key == ir_keys[K_RIGHT].hex){ 
-   if (tempMinHolder < maxml-10){
+   if (tempMinHolder <= 1430){
       tempMinHolder+=10;
     } 
     else{
+      tempMinHolder = 1440;
       lcd.cursorTo(1,0);
-      sprintf(tmp,"Pump max: %05u ml/s",maxml);
+      sprintf(tmp,"Pump max: %luml",(long)(mlm*1440));
       lcd.print(tmp);
       delay(700);
       lcd.clear_L2();
     }
 
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05u ml         ",tempMinHolder);
+    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
@@ -715,7 +717,6 @@ void set_pump(){
   }
 
   delay(100);
-  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
 }
 
 
@@ -783,7 +784,6 @@ void cal_pump(){
   }
 
   delay(100);
-  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
   
 }
 
@@ -802,7 +802,7 @@ void prep_review_pump(Pump &pump){
   lcd.print(pump.getMlm());  
   lcd.cursorTo(2,0);
   lcd.print(F("daily dose: "));
-  lcd.print((int)pump.getDose());
+  lcd.print((int)(pump.getDose()*pump.getMlm()));
   lcd.print("ml");
   handle_review_pump();
 }
@@ -1079,7 +1079,6 @@ void set_time( void ){
 #endif
   }
   delay(100);
-  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
 
 }
 /*********************************/
@@ -1134,7 +1133,6 @@ void onKeyPress( void )
   }
 
   delay(100);
-  irrecv.resume();
 }
 
 /***********************/
@@ -1180,9 +1178,6 @@ void show_menu( void ) {
   } 
 
   delay(100);
-
-  irrecv.resume(); // we just consumed one key; 'start' to receive the next value
-
 }
 
 
