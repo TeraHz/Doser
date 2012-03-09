@@ -42,15 +42,20 @@ public:
   uint16_t getDose( void );
   void setDose( uint16_t );
   void setEE(uint16_t ee);
+  void startDosing();
+  void stopDosing();
   void save();
   void load(); // make sure you call setEE before you load
-
+  boolean isOn();
+  
 private:
+  uint8_t _counter; // count 1 minute of dosing
   uint8_t _pin; // which digital pin controls the pump
   float _mlm; // how many ml/s does the pump move
   uint16_t _dose; // daily dose for the pump in ml
-  char * _desc;
-  uint16_t _ee;
+  char * _desc; // some descriptin
+  uint16_t _ee; // location in EEPROM
+  boolean _isOn; // 0 dose = off
 };
 #endif
 

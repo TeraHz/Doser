@@ -79,7 +79,7 @@ uint8_t ATO_FS1_STATE      =   0; // State holder for flat switch 1
 uint8_t ATO_FS2_STATE      =   0; // State holder for flat switch 2
 uint8_t ATO_FS3_STATE      =   0; // State holder for flat switch 3
 
-uint8_t val[] = {0,255};
+Time currentTime;                 // hold current time
 
 uint8_t i, global_mode,ts, tmi, th, tdw, tdm, tmo, ty;//variables for time
 uint16_t key;                     // Store current hex of the IR key
@@ -92,7 +92,7 @@ char * calibration_instructions[6] = {
             "Prepare 250ml water.","Prime line.         ",
             "Submerge line input.","Press OK to start.  ",
             "Press OK when all   ","water is gone       "};
-
+    
 boolean first = true;
 // this is a temporary holding area that we write to, key by key; and then dump all at once when the user finishes the last one
 uint16_t ir_key_bank1[MAX_FUNCTS+1];
@@ -118,6 +118,7 @@ ir_keys[MAX_FUNCTS+1] = {
 
 //Init the Real Time Clock
 DS1302 rtc(13, 7, 2);
+
 
 //Init the MCP port expander for LCD
 MCP23XX lcd_mcp = MCP23XX(LCD_MCP_DEV_ADDR);
@@ -165,9 +166,6 @@ MenuItem mi_ATO_set = MenuItem("Set timeot");
 
 
 IRrecv irrecv(IR_PIN);
-
-// Init a Time-data structure
-Time t;
 
 void setup()
 {
@@ -243,8 +241,8 @@ void setup()
 void loop()
 {
   // Get data from the DS1302
-  t = rtc.getTime();
-  uint8_t second = t.sec;
+  currentTime = rtc.getTime();
+  uint8_t second = currentTime.sec;
   if (global_mode == 0) {     //  home screen
     onKeyPress();
   }//global_mode == 0
@@ -289,6 +287,7 @@ void loop()
   else{//we're somewhere else?
     
   }
+  
   if (psecond != second){
       psecond = second;
       run_sec();
@@ -301,16 +300,17 @@ void loop()
 /****** RUN ONCE PER SECOND ******/
 /*********************************/
 void run_sec( void ){
+  
+//  // It is midnight. Might be useful for something in the future :)
+//  if (currentTime.hour == 0 && currentTime.min == 0 && currentTime.sec == 0){
+//  }
+      
   do_ATO();
-  if (global_mode == 0){
-    update_pump(psecond%5,val[psecond%2]);
-    //  lcd.cursorTo(0,0);
-    //  lcd.print(psecond%5);
-    //  lcd.print(":");
-    //  lcd.print(val[psecond%2]);
-    //  lcd.print("  ");
-//    analogWrite(pumps[psecond%5],val[psecond%2]);
-  }
+  do_DOSING(p1);
+  do_DOSING(p2);
+  do_DOSING(p3);
+  do_DOSING(p4);
+  do_DOSING(p5);
   update_clock(3,0);
   
 #ifdef DEBUG
@@ -338,6 +338,20 @@ void run_sec( void ){
   Serial.print("Mem: "); Serial.println(availableMemory());
 }
 
+/****************************/
+/****** PERFORM DOSING ******/
+/****************************/
+void do_DOSING(Pump &pump){
+  if (pump.isOn()){
+    uint8_t repeat = 1440/pump.getDose();
+    if ((currentTime.hour*60+currentTime.min)%repeat == 0){
+      pump.startDosing();
+    }else{
+      pump.stopDosing();
+    }
+  }
+
+}
 
 /*******************************/
 /****** PRINT TIME AT X,Y ******/
@@ -731,7 +745,6 @@ void cal_pump(){
   delay(50);
   // key = OK
   if (key == ir_keys[K_OK].hex ) {
-    Time tmp = rtc.getTime();
     if (first){
       if (calibrated){
         temppump->setMlm(rate);
@@ -741,14 +754,14 @@ void cal_pump(){
         global_mode = 0;
         lcd.clear();
       }else{
-        calTime = tmp.sec+tmp.min*60+tmp.hour*60*60;
+        calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60;
         first = false;
         calibrated = false;
         calPage = 2;
         update_cal_screen();
       }
     }else{
-      calTime = tmp.sec+tmp.min*60+tmp.hour*60*60 - calTime;
+      calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60 - calTime;
       first = true;
       calibrated  = true;
       calPage = 3;
@@ -1191,14 +1204,13 @@ void menuUseEvent(MenuUseEvent used)
     // clock setup
     if (used.item == mi_clock){
       global_mode=4;
-      Time t = rtc.getTime();
-      th = t.hour;
-      tmi = t.min;
-      ts = t.sec;
-      tdm = t.date;
-      tmo = t.mon;
-      ty = t.year - 2000;
-      tdw = t.dow;
+      th = currentTime.hour;
+      tmi = currentTime.min;
+      ts = currentTime.sec;
+      tdm = currentTime.date;
+      tmo = currentTime.mon;
+      ty = currentTime.year - 2000;
+      tdw = currentTime.dow;
       lcd.clear();
       lcd.cursorTo(1,0);
       lcd.print(F("Use arrows to adjust"));

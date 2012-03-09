@@ -30,6 +30,7 @@ Pump::Pump( uint8_t pin, uint8_t mlm, uint16_t dose, char* desc) {
   _mlm = mlm;
   _dose = dose;
   _desc = desc;
+  _counter = 0;
 }
 
 Pump::~Pump(){}
@@ -65,13 +66,28 @@ uint16_t Pump::getDose( void ){
 
 }
 
+boolean Pump::isOn( void ){
+  return _isOn;
+}
+
 void Pump::setDose( uint16_t dose ){
+  if (dose == 0){
+    _isOn = false;
+  }else{
+    _isOn = true;
+  }
   _dose = dose;
 }
 void Pump::setEE( uint16_t e ){
   _ee = e;
 }
 
+void Pump::startDosing(){
+  analogWrite(_pin, 255);
+}
+
+void Pump::stopDosing(){
+}
 
 void Pump::save(){
   EEPROM_writeAnything(_ee, _mlm);
