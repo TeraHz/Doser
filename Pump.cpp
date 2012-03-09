@@ -26,78 +26,79 @@
 
 Pump::Pump( uint8_t pin, uint8_t mlm, uint16_t dose, char* desc) {
   pinMode(pin, OUTPUT);
-  _pin = pin;
-  _mlm = mlm;
-  _dose = dose;
-  _desc = desc;
-  _counter = 0;
+  this->_pin = pin;
+  this->_mlm = mlm;
+  this->_dose = dose;
+  this->_desc = desc;
+  this->_counter = 0;
 }
 
 Pump::~Pump(){}
 
 uint8_t Pump::getPin( void ){
-  return _pin;
+  return this->_pin;
 
 }
 
 void Pump::setPin( uint8_t pin){
   pinMode(pin, OUTPUT);      // enable the pin
-  _pin = pin;
+  this->_pin = pin;
 }
 
 float Pump::getMlm( void ){
-  return _mlm;
+  return this->_mlm;
 }
 
 void Pump::setMlm( float mlm ){
-  _mlm = mlm;
+  this->_mlm = mlm;
 }
 
 char* Pump::getDescription( void ){
-  return _desc;
+  return this->_desc;
 }
 
 void Pump::setDescription( char* desc ){
-  _desc = desc;
+  this->_desc = desc;
 }
 
 uint16_t Pump::getDose( void ){
-  return _dose;
+  return this->_dose;
 
 }
 
 boolean Pump::isOn( void ){
-  return _isOn;
+  return this->_isOn;
 }
 
 void Pump::setDose( uint16_t dose ){
   if (dose == 0){
-    _isOn = false;
+    this->_isOn = false;
   }else{
-    _isOn = true;
+    this->_isOn = true;
   }
-  _dose = dose;
+  this->_dose = dose;
 }
 void Pump::setEE( uint16_t e ){
-  _ee = e;
+  this->_ee = e;
 }
 
 void Pump::startDosing(){
-  analogWrite(_pin, 255);
+  analogWrite(this->_pin, 255);
 }
 
 void Pump::stopDosing(){
+  analogWrite(this->_pin, 0);
 }
 
 void Pump::save(){
-  EEPROM_writeAnything(_ee, _mlm);
-  EEPROM_writeAnything(_ee+10, _dose);
-  EEPROM_writeAnything(_ee+20, _desc);
+  EEPROM_writeAnything(this->_ee, this->_mlm);
+  EEPROM_writeAnything(this->_ee+5, this->_dose);
+  EEPROM_writeAnything(this->_ee+10, this->_desc);
 }
 
 void Pump::load(){
-  EEPROM_readAnything(_ee, _mlm);
-  EEPROM_readAnything(_ee+10, _dose);
-  EEPROM_readAnything(_ee+20, _desc);
+  EEPROM_readAnything(this->_ee, this->_mlm);
+  EEPROM_readAnything(this->_ee+5, this->_dose);
+  EEPROM_readAnything(this->_ee+10, this->_desc);
   
 }

@@ -1,10 +1,10 @@
 /*
 ||
 || @file 	MenuBackend.h
-|| @version 1.3
+|| @version 1.4
 || @author 	Alexander Brevig
 || @contact alexanderbrevig@gmail.com
-|| @contribution Adrian Brzezinski adrb@wp.pl
+|| @contribution Adrian Brzezinski adrb@wp.pl, http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?action=viewprofile;username=vzhang
 ||
 || @description
 || | Provide an easy way of making menus
@@ -196,13 +196,11 @@ public:
 private:
 	void setCurrent( MenuItem *next ) {
 		if (next) {
-                        previous = current;
-                        current = next;
 			if (cb_menuChange) {
-				MenuChangeEvent mce = { *previous, *next };
+				MenuChangeEvent mce = { *current, *next };
 				(*cb_menuChange)(mce);
 			}
-			
+			current = next;
 		}
 	}
 	void foundShortkeyItem(MenuItem *mi) {
@@ -258,7 +256,6 @@ private:
 	
 	MenuItem root;
 	MenuItem *current;
-        MenuItem *previous;
 
 	cb_change cb_menuChange;
 	cb_use cb_menuUse;

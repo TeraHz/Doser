@@ -47,8 +47,8 @@
 // has to be the last entry in this list
 #define K_KEY_SENTINEL       7  // this must always be the last in the list
 #define MAX_FUNCTS                  K_KEY_SENTINEL
-#define EEPROM_SAVED        1000  // EEPROM location to save
-#define EEPROM_SAVED_VALUE     1  // EEPROM value to check; change this to reinitialize the pumps
+#define EEPROM_SAVED        500  // EEPROM location to save
+#define EEPROM_SAVED_VALUE     3  // EEPROM value to check; change this to reinitialize the pumps
 
 /*
  * IFC = internal function codes
@@ -128,12 +128,12 @@ LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM
 
 //Init the Pumps
 //Pump(pin number, ml/s, daily dose, dsecription);
-Pump p1 = Pump(3,1,0,"Pump 1");
-Pump p2 = Pump(5,0,0,"Pump 2");
-Pump p3 = Pump(6,0,0,"Pump 3");
-Pump p4 = Pump(11,0,0,"Pump 4");
-Pump p5 = Pump(10,0,0,"Pump 5");
-Pump * temppump;
+Pump * p1 = new Pump(3,1,0,"Pump 1");
+Pump * p2 = new Pump(5,0,0,"Pump 2");
+Pump * p3 = new Pump(6,0,0,"Pump 3");
+Pump * p4 = new Pump(11,0,0,"Pump 4");
+Pump * p5 = new Pump(10,0,0,"Pump 5");
+Pump * currentPump;
 
 //this controls the menu backend and the event generation
 MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
@@ -187,30 +187,50 @@ void setup()
   // Enable Float switch 3 pin's pullup
   digitalWrite(ATO_FS3,HIGH);
   pinMode(ATO_RELAY, OUTPUT);
-  p1.setEE(100);
-  p2.setEE(200);
-  p3.setEE(300);
-  p4.setEE(400);
-  p5.setEE(500);
+  p1->setEE(100);
+  p2->setEE(150);
+  p3->setEE(200);
+  p4->setEE(250);
+  p5->setEE(300);
   
   if (EEPROM.read(EEPROM_SAVED) != EEPROM_SAVED_VALUE) {
-    p1.save();
-    p2.save();
-    p3.save();
-    p4.save();
-    p5.save();
+    p1->save();
+    p2->save();
+    p3->save();
+    p4->save();
+    p5->save();
     EEPROM.write(EEPROM_SAVED,EEPROM_SAVED_VALUE);
   }else{
-    p1.load();
-    p2.load();
-    p3.load();
-    p4.load();
-    p5.load();
+    p1->load();
+    p2->load();
+    p3->load();
+    p4->load();
+    p5->load();
   }
   //start IR sensor
   irrecv.enableIRIn();
- 
- 
+#ifdef DEBUG_PUMP
+  Serial.print(F("Pump 1 - pin:"));
+  Serial.print(p1->getPin());
+  Serial.print(F("desc:"));
+  Serial.println(p1->getDescription());
+  Serial.print(F("Pump 2 - pin:"));
+  Serial.print(p2->getPin());
+  Serial.print(F("desc:"));
+  Serial.println(p2->getDescription());
+  Serial.print(F("Pump 3 - pin:"));
+  Serial.print(p3->getPin());
+  Serial.print(F("desc:"));
+  Serial.println(p3->getDescription());
+  Serial.print(F("Pump 4 - pin:"));
+  Serial.print(p4->getPin());
+  Serial.print(F("desc:"));
+  Serial.println(p4->getDescription());
+  Serial.print(F("Pump 5 - pin:"));
+  Serial.print(p5->getPin());
+  Serial.print(F("desc:"));
+  Serial.println(p5->getDescription());
+#endif
   // Setup Serial connection
   //start LCD
   lcd.init();
@@ -306,11 +326,13 @@ void run_sec( void ){
 //  }
       
   do_ATO();
-  do_DOSING(p1);
-  do_DOSING(p2);
-  do_DOSING(p3);
-  do_DOSING(p4);
-  do_DOSING(p5);
+  if (global_mode != 2){ // we don't want dosing to occur while we use the pumps for calibration
+    do_DOSING(p1);
+    do_DOSING(p2);
+    do_DOSING(p3);
+    do_DOSING(p4);
+    do_DOSING(p5);
+  }
   update_clock(3,0);
   
 #ifdef DEBUG
@@ -341,13 +363,13 @@ void run_sec( void ){
 /****************************/
 /****** PERFORM DOSING ******/
 /****************************/
-void do_DOSING(Pump &pump){
-  if (pump.isOn()){
-    uint8_t repeat = 1440/pump.getDose();
+void do_DOSING(Pump *pump){
+  if (pump->isOn()){
+    uint8_t repeat = 1440/pump->getDose();
     if ((currentTime.hour*60+currentTime.min)%repeat == 0){
-      pump.startDosing();
+      pump->startDosing();
     }else{
-      pump.stopDosing();
+      pump->stopDosing();
     }
   }
 
@@ -560,12 +582,18 @@ void update_pump(uint8_t pump, uint8_t val){
 /********************************************/
 /****** SETUP LCD FOR pump CALIBRATION ******/
 /********************************************/
-void pump_menu_cal(Pump &pump){
+void pump_menu_cal(Pump *pump){
+  currentPump = pump;
+#ifdef DEBUG_MENU
+  Serial.print(F("Setting curentTemp to "));
+  Serial.print(pump->getDescription());
+  Serial.print("->");
+  Serial.println(currentPump->getDescription());
+#endif
   lcd.clear();
   lcd.cursorTo(0,0);  
-  lcd.printL(pump.getDescription(), 8);
+  lcd.printL(pump->getDescription(), 8);
   lcd.print(F("Calibration"));
-  temppump = &pump;
   global_mode = 2;
   first = true;
   calPage = 0;
@@ -614,18 +642,24 @@ void update_cal_screen(){
 /**************************************/
 /****** SETUP LCD FOR pump SETUP ******/
 /**************************************/
-void pump_menu_set(Pump &pump){
+void pump_menu_set(Pump *pump){
   global_mode = 3;
-  tempMinHolder = pump.getDose();
-  temppump = &pump;
+  tempMinHolder = pump->getDose();
+  currentPump = pump;
+#ifdef DEBUG_MENU
+  Serial.print(F("Setting curentTemp to "));
+  Serial.print(pump->getDescription());
+  Serial.print("->");
+  Serial.println(currentPump->getDescription());
+#endif
   lcd.clear(); 
   lcd.cursorTo(0,0);  
-  lcd.printL(pump.getDescription(), 8);
+  lcd.printL(pump->getDescription(), 8);
   lcd.print(F("Setup"));
   lcd.cursorTo(2,0);
   lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05u ml",pump.getDose()*pump.getMlm());
+  sprintf(tmp,"   %05u ml",pump->getDose()*pump->getMlm());
   lcd.print(tmp);
   set_pump();
 }
@@ -634,7 +668,7 @@ void pump_menu_set(Pump &pump){
 /****** SET PUMP ******/
 /**********************/
 void set_pump(){
-  float mlm = temppump->getMlm();
+  float mlm = currentPump->getMlm();
   key = get_input_key();
   if (key == 0) {
     return;
@@ -642,8 +676,8 @@ void set_pump(){
   delay(50);
   // key = OK
   if (key == ir_keys[K_OK].hex ) {
-    temppump->setDose(tempMinHolder);
-    temppump->save();
+    currentPump->setDose(tempMinHolder);
+    currentPump->save();
     global_mode = 0;
     lcd.clear();
     first=true;
@@ -747,8 +781,8 @@ void cal_pump(){
   if (key == ir_keys[K_OK].hex ) {
     if (first){
       if (calibrated){
-        temppump->setMlm(rate);
-        temppump->save();
+        currentPump->setMlm(rate);
+        currentPump->save();
         calibrated=false;
         calPage = 0;
         global_mode = 0;
@@ -757,6 +791,7 @@ void cal_pump(){
         calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60;
         first = false;
         calibrated = false;
+        currentPump->startDosing();
         calPage = 2;
         update_cal_screen();
       }
@@ -764,6 +799,7 @@ void cal_pump(){
       calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60 - calTime;
       first = true;
       calibrated  = true;
+      currentPump->stopDosing();
       calPage = 3;
       update_cal_screen();
     }
@@ -787,9 +823,11 @@ void cal_pump(){
 
   // key = Cancel
   else if (key == ir_keys[K_CANCEL].hex){
+    currentPump->stopDosing();
     lcd.clear();
     global_mode = 0;
     first = true;
+    calibrated  = true;
   }else{
 #ifdef DEBUG
     Serial << F("unknown key") << "\n\r";
@@ -803,19 +841,19 @@ void cal_pump(){
 /*********************************/
 /****** PREPARE REVIEW PUMP ******/
 /*********************************/
-void prep_review_pump(Pump &pump){
+void prep_review_pump(Pump *pump){
   global_mode = 5;
   lcd.clear_L2();
   lcd.clear_L3();
-  tempMinHolder = pump.getDose();
+  tempMinHolder = pump->getDose();
   lcd.cursorTo(0,8);
   lcd.print(F("Review"));
   lcd.cursorTo(1,0);
   lcd.print(F("ml per minute:"));
-  lcd.print(pump.getMlm());  
+  lcd.print(pump->getMlm());  
   lcd.cursorTo(2,0);
   lcd.print(F("daily dose: "));
-  lcd.print((int)(pump.getDose()*pump.getMlm()));
+  lcd.print((int)(pump->getDose()*pump->getMlm()));
   lcd.print("ml");
   handle_review_pump();
 }
@@ -1201,6 +1239,17 @@ void show_menu( void ) {
 /***********************************/
 void menuUseEvent(MenuUseEvent used)
 {
+  MenuItem * left = used.item.getLeft();
+#ifdef DEBUG_MENU
+    Serial.print(F("Current is"));
+    Serial.print(menu.getCurrent().getLeft()->getName());
+    Serial.print(F("->"));
+    Serial.print(menu.getCurrent().getName());
+    Serial.print(F(" used:"));
+    Serial.print(used.item.getLeft()->getName());
+    Serial.print(F("->"));
+    Serial.println(used.item.getName());
+#endif
     // clock setup
     if (used.item == mi_clock){
       global_mode=4;
@@ -1221,63 +1270,63 @@ void menuUseEvent(MenuUseEvent used)
       set_time();
     }
     // pump1 setup
-    else if(used.item == mi_pump1_set){
+    else if(used.item == mi_pump1_set && *left == mi_pump1){
       pump_menu_set(p1);
     }
     // pump2 setup
-    else if(used.item == mi_pump2_set){
+    else if(used.item == mi_pump2_set && *left == mi_pump2){
       pump_menu_set(p2);
     }
     // pump3 setup
-    else if(used.item == mi_pump3_set){
+    else if(used.item == mi_pump3_set && *left == mi_pump3){
       pump_menu_set(p3);
     }
     // pump4 setup
-    else if(used.item == mi_pump4_set){
+    else if(used.item == mi_pump4_set && *left == mi_pump4){
       pump_menu_set(p4);
     }
     // pump5 setup
-    else if(used.item == mi_pump5_set){
+    else if(used.item == mi_pump5_set && *left == mi_pump5){
       pump_menu_set(p5);
     }
     // pump1 calibration
-    else if(used.item == mi_pump1_calibrate){
+    else if(used.item == mi_pump1_calibrate && *left == mi_pump1){
       pump_menu_cal(p1);
     }
     // pump2 calibration
-    else if(used.item == mi_pump2_calibrate){
+    else if(used.item == mi_pump2_calibrate && *left == mi_pump2){
       pump_menu_cal(p2);
     }
     // pump3 calibration
-    else if(used.item == mi_pump3_calibrate){
+    else if(used.item == mi_pump3_calibrate && *left == mi_pump3){
       pump_menu_cal(p3);
     }
     // pump4 calibration
-    else if(used.item == mi_pump4_calibrate){
+    else if(used.item == mi_pump4_calibrate && *left == mi_pump4){
       pump_menu_cal(p4);
     }
     // pump5 calibration
-    else if(used.item == mi_pump5_calibrate){
+    else if(used.item == mi_pump5_calibrate && *left == mi_pump5){
       pump_menu_cal(p5);
     }
     // pump1 review
-    else if(used.item == mi_pump1_review){
+    else if(used.item == mi_pump1_review && *left == mi_pump1){
       prep_review_pump(p1);
     }
     // pump2 review
-    else if(used.item == mi_pump2_review){
+    else if(used.item == mi_pump2_review && *left == mi_pump2){
       prep_review_pump(p2);
     }
     // pump3 review
-    else if(used.item == mi_pump3_review){
+    else if(used.item == mi_pump3_review && *left == mi_pump3){
       prep_review_pump(p2);
     }
     // pump4 review
-    else if(used.item == mi_pump4_review){
+    else if(used.item == mi_pump4_review && *left == mi_pump4){
       prep_review_pump(p3);
     }
     // pump5 review
-    else if(used.item == mi_pump5_review){
+    else if(used.item == mi_pump5_review && *left == mi_pump5){
       prep_review_pump(p4);
     }
     // Auto TopOff setup
@@ -1304,12 +1353,16 @@ void menuUseEvent(MenuUseEvent used)
 /*****************************/
 void menuChangeEvent(MenuChangeEvent changed)
 {
-#ifdef DEBUG
+#ifdef DEBUG_MENU
   Serial.print(F("Menu change "));
   Serial.print(changed.from.getName());
   Serial.print("->");
-  Serial.println(changed.to.getName());
+  Serial.print(changed.to.getName());
+  Serial.print("->");
+  Serial.println(changed.to.getLeft()->getName());
+  Serial.println(menu.getCurrent().getName());
 #endif
+
   if (global_mode == 1){
     if (changed.to.getLeft() == 0){
       if (changed.to.getRight() != 0){
