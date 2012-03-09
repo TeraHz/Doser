@@ -335,6 +335,9 @@ void run_sec( void ){
   }
   update_clock(3,0);
   
+  if (!first && !calibrated){
+    calTime++;
+  }
 #ifdef DEBUG
   switch (global_mode){
     case 0:
@@ -598,6 +601,7 @@ void pump_menu_cal(Pump *pump){
   first = true;
   calPage = 0;
   update_cal_screen();
+  calTime = 0;
   cal_pump();
 }
 
@@ -788,7 +792,6 @@ void cal_pump(){
         global_mode = 0;
         lcd.clear();
       }else{
-        calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60;
         first = false;
         calibrated = false;
         currentPump->startDosing();
@@ -796,7 +799,6 @@ void cal_pump(){
         update_cal_screen();
       }
     }else{
-      calTime = currentTime.sec+currentTime.min*60+currentTime.hour*60*60 - calTime;
       first = true;
       calibrated  = true;
       currentPump->stopDosing();
