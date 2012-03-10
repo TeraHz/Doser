@@ -18,8 +18,19 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   
   https://github.com/TeraHz/Doser
-   
+  
 */
+
+
+// Debugging flags. Be careful when you enable debugging as 
+// memory is tight and the controller might crash if all
+// info is enabled.
+//
+//#define DEBUG        // enables serial and prints out memory
+//#define DEBUG_PUMP   // pump related
+//#define DEBUG_MENU   // menu related
+//#define DEUBG_IR     // IR related
+
 
 #include <Flash.h> //from http://arduiniana.org/libraries/flash/
 #include <Wire.h>
@@ -338,7 +349,7 @@ void run_sec( void ){
   if (!first && !calibrated){
     calTime++;
   }
-#ifdef DEBUG
+#ifdef DEBUG_MODE
   switch (global_mode){
     case 0:
       Serial.println(F("Global mode"));
@@ -360,13 +371,20 @@ void run_sec( void ){
       break;
   }
 #endif
+#ifdef DEBUG
   Serial.print("Mem: "); Serial.println(availableMemory());
+#endif
 }
 
 /****************************/
 /****** PERFORM DOSING ******/
 /****************************/
 void do_DOSING(Pump *pump){
+#ifdef DEBUG_PUMP
+  Serial.print(F("Working on pump "));
+  Serial.println(pump->getDescription());
+#endif
+
   if (pump->isOn()){
     uint8_t repeat = 1440/pump->getDose();
     if ((currentTime.hour*60+currentTime.min)%repeat == 0){
@@ -586,6 +604,10 @@ void update_pump(uint8_t pump, uint8_t val){
 /****** SETUP LCD FOR pump CALIBRATION ******/
 /********************************************/
 void pump_menu_cal(Pump *pump){
+#ifdef DEBUG_PUMP
+  Serial.print(F("Working on pump "));
+  Serial.println(pump->getDescription());
+#endif
   currentPump = pump;
 #ifdef DEBUG_MENU
   Serial.print(F("Setting curentTemp to "));
@@ -647,6 +669,10 @@ void update_cal_screen(){
 /****** SETUP LCD FOR pump SETUP ******/
 /**************************************/
 void pump_menu_set(Pump *pump){
+#ifdef DEBUG_PUMP
+  Serial.print(F("Working on pump "));
+  Serial.println(pump->getDescription());
+#endif
   global_mode = 3;
   tempMinHolder = pump->getDose();
   currentPump = pump;
@@ -763,7 +789,7 @@ void set_pump(){
     delay (100);
     first = true;
   }else{
-#ifdef DEBUG
+#ifdef DEBUG_IR
     Serial << F("unknown key") << "\n\r";
 #endif
   }
@@ -831,7 +857,7 @@ void cal_pump(){
     first = true;
     calibrated  = true;
   }else{
-#ifdef DEBUG
+#ifdef DEBUG_IR
     Serial << F("unknown key") << "\n\r";
 #endif
   }
@@ -844,6 +870,10 @@ void cal_pump(){
 /****** PREPARE REVIEW PUMP ******/
 /*********************************/
 void prep_review_pump(Pump *pump){
+#ifdef DEBUG_PUMP
+  Serial.print(F("Working on pump "));
+  Serial.println(pump->getDescription());
+#endif
   global_mode = 5;
   lcd.clear_L2();
   lcd.clear_L3();
@@ -877,7 +907,7 @@ void handle_review_pump(){
     delay (100);
     first = true;
   }else{
-#ifdef DEBUG
+#ifdef DEBUG_IR
     Serial.print("if (key[");
     Serial.print(key);
     Serial.print("] == ir_keys[K_CANCEL].hex[");
@@ -900,7 +930,7 @@ void do_ATO(){
   ATO_FS2_STATE = digitalRead(ATO_FS2);
   ATO_FS3_STATE = digitalRead(ATO_FS3);
 
-#ifdef DEBUG
+#ifdef DEBUG_ATO
   Serial << F("ATO_FS1_STATE: ") << ATO_FS1_STATE << "\r\n";
   Serial << F("ATO_FS2_STATE: ") << ATO_FS2_STATE << "\r\n";
   Serial << F("ATO_FS3_STATE: ") << ATO_FS3_STATE << "\r\n";
@@ -1114,7 +1144,7 @@ void set_time( void ){
     delay (100);
     first = true;
   }else{
-#ifdef DEBUG
+#ifdef DEBUG_IR
     Serial.print(key,HEX);
     Serial.print(":");
     Serial.print(ir_keys[K_UP].hex,HEX);
@@ -1141,7 +1171,7 @@ void onKeyPress( void )
 {
 
   key = get_input_key();
-#ifdef DEBUG
+#ifdef DEBUG_IR
   Serial.print(key,HEX);
 #endif
   if (key == 0) {
@@ -1180,7 +1210,7 @@ void onKeyPress( void )
   }
 
   else{
-#ifdef DEBUG
+#ifdef DEBUG_IR
     Serial.println("unsupported");
 #endif
   }
@@ -1243,7 +1273,7 @@ void menuUseEvent(MenuUseEvent used)
 {
   MenuItem * left = used.item.getLeft();
 #ifdef DEBUG_MENU
-    Serial.print(F("Current is"));
+    Serial.print(F("Current is "));
     Serial.print(menu.getCurrent().getLeft()->getName());
     Serial.print(F("->"));
     Serial.print(menu.getCurrent().getName());
@@ -1321,15 +1351,15 @@ void menuUseEvent(MenuUseEvent used)
     }
     // pump3 review
     else if(used.item == mi_pump3_review && *left == mi_pump3){
-      prep_review_pump(p2);
+      prep_review_pump(p3);
     }
     // pump4 review
     else if(used.item == mi_pump4_review && *left == mi_pump4){
-      prep_review_pump(p3);
+      prep_review_pump(p4);
     }
     // pump5 review
     else if(used.item == mi_pump5_review && *left == mi_pump5){
-      prep_review_pump(p4);
+      prep_review_pump(p5);
     }
     // Auto TopOff setup
     else if(used.item == mi_ATO_set){
@@ -1431,7 +1461,7 @@ void menuSetup()
   mi_pump3.addRight(mi_pump3_review);
     mi_pump3_review.addBefore(mi_pump3_set);
     mi_pump3_review.addAfter(mi_pump3_calibrate);
-    mi_pump2_review.addLeft(mi_pump2);
+    mi_pump3_review.addLeft(mi_pump3);
     mi_pump3_set.addBefore(mi_pump3_calibrate);
     mi_pump3_set.addAfter(mi_pump3_review);
     mi_pump3_set.addLeft(mi_pump3);
