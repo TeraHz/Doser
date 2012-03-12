@@ -361,12 +361,6 @@ LCDI2C4Bit::print( int i){
 }
 
 void
-LCDI2C4Bit::print(_FLASH_STRING &pstring){
-  for (uint8_t i=0; i < pstring.length(); ++i)
-    write(pstring[i]);
-}
-
-void
 LCDI2C4Bit::print(const __FlashStringHelper *ifsh){
   const prog_char *p = (const prog_char *)ifsh;
   while (1) {

@@ -84,7 +84,7 @@ extern uint8_t lcd_in_use_flag;    // mutex flag: we are not allowed to 'do anyt
 #define TICKS_LOW(us) (int) (((us)*LTOL/USECPERTICK))
 #define TICKS_HIGH(us) (int) (((us)*UTOL/USECPERTICK + 1))
 
-#ifndef DEBUG
+#ifndef DEBUG_IR_ADDON
 #define MATCH(measured_ticks, desired_us) ((measured_ticks) >= TICKS_LOW(desired_us) && (measured_ticks) <= TICKS_HIGH(desired_us))
 #define MATCH_MARK(measured_ticks, desired_us) MATCH(measured_ticks, (desired_us) + MARK_EXCESS)
 #define MATCH_SPACE(measured_ticks, desired_us) MATCH((measured_ticks), (desired_us) - MARK_EXCESS)
@@ -102,8 +102,8 @@ typedef struct {
   uint8_t recvpin;           // pin for IR data from detector
   uint8_t rcvstate;          // state machine
   uint8_t blinkflag;         // TRUE to enable blinking of pin 13 on IR processing
-  unsigned int timer;     // state timer, counts 50uS ticks.
-  unsigned int rawbuf[RAWBUF]; // raw data
+  uint16_t timer;     // state timer, counts 50uS ticks.
+  uint16_t rawbuf[RAWBUF]; // raw data
   uint8_t rawlen;         // counter of entries in rawbuf
 } 
 irparams_t;

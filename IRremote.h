@@ -27,10 +27,10 @@
 class decode_results {
 public:
   uint8_t decode_type; // NEC, SONY, RC5, UNKNOWN
-  unsigned long value; // Decoded value
-  int bits; // Number of bits in decoded value
-  volatile unsigned int *rawbuf; // Raw intervals in .5 us ticks
-  int rawlen; // Number of records in rawbuf.
+  uint32_t value; // Decoded value
+  uint8_t bits; // Number of bits in decoded value
+  volatile uint16_t *rawbuf; // Raw intervals in .5 us ticks
+  uint8_t rawlen; // Number of records in rawbuf.
 };
 
 // Values for decode_type
@@ -47,18 +47,18 @@ public:
 class IRrecv
 {
 public:
-  IRrecv(int recvpin);
-  void blink13(int blinkflag);
-  int decode(decode_results *results);
+  IRrecv(uint8_t recvpin);
+  void blink13(uint8_t blinkflag);
+  uint8_t decode(decode_results *results);
   void enableIRIn();
   void resume();
 private:
   // These are called by decode
-  uint8_t getRClevel(decode_results *results, int *offset, int *used, int t1);
-  long decodeNEC(decode_results *results);
-  long decodeSony(decode_results *results);
-  long decodeRC5(decode_results *results);
-  long decodeRC6(decode_results *results);
+  uint8_t getRClevel(decode_results *results, uint8_t *offset, uint8_t *used, uint8_t t1);
+  uint16_t decodeNEC(decode_results *results);
+  uint16_t decodeSony(decode_results *results);
+  uint16_t decodeRC5(decode_results *results);
+  uint16_t decodeRC6(decode_results *results);
 } 
 ;
 
@@ -73,15 +73,15 @@ class IRsend
 {
 public:
   IRsend() {}
-  void sendNEC(unsigned long data, int nbits);
-  void sendSony(unsigned long data, int nbits);
-  void sendRaw(unsigned int buf[], int len, int hz);
-  void sendRC5(unsigned long data, int nbits);
-  void sendRC6(unsigned long data, int nbits);
+  void sendNEC(uint16_t data, uint8_t nbits);
+  void sendSony(uint32_t data, uint8_t nbits);
+  void sendRaw(uint16_t buf[], uint8_t len, uint8_t hz);
+  void sendRC5(uint32_t data, uint8_t nbits);
+  void sendRC6(uint32_t data, uint8_t nbits);
   // private:
-  void enableIROut(int khz);
-  VIRTUAL void mark(int usec);
-  VIRTUAL void space(int usec);
+  void enableIROut(uint8_t khz);
+  VIRTUAL void mark(uint16_t usec);
+  VIRTUAL void space(uint16_t usec);
 }
 ;
 

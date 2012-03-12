@@ -27,7 +27,7 @@ volatile irparams_t irparams;
 // These versions of MATCH, MATCH_MARK, and MATCH_SPACE are only for debugging.
 // To use them, set DEBUG in IRremoteInt.h
 // Normally macros are used for efficiency
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
 int 
 MATCH(int measured, int desired) 
 {
@@ -57,12 +57,12 @@ MATCH_SPACE(int measured_ticks, int desired_us)
 
 
 void 
-IRsend::sendNEC(unsigned long data, int nbits)
+IRsend::sendNEC(uint16_t data, uint8_t nbits)
 {
   enableIROut(38);
   mark(NEC_HDR_MARK);
   space(NEC_HDR_SPACE);
-  for (int i = 0; i < nbits; i++) {
+  for (uint8_t i = 0; i < nbits; i++) {
     if (data & TOPBIT) {
       mark(NEC_BIT_MARK);
       space(NEC_ONE_SPACE);
@@ -81,13 +81,13 @@ IRsend::sendNEC(unsigned long data, int nbits)
 
 
 void 
-IRsend::sendSony(unsigned long data, int nbits) 
+IRsend::sendSony(uint32_t data, uint8_t nbits) 
 {
   enableIROut(40);
   mark(SONY_HDR_MARK);
   space(SONY_HDR_SPACE);
   data = data << (32 - nbits);
-  for (int i = 0; i < nbits; i++) {
+  for (uint8_t i = 0; i < nbits; i++) {
     if (data & TOPBIT) {
       mark(SONY_ONE_MARK);
       space(SONY_HDR_SPACE);
@@ -104,10 +104,10 @@ IRsend::sendSony(unsigned long data, int nbits)
 
 
 void 
-IRsend::sendRaw(unsigned int buf[], int len, int hz)
+IRsend::sendRaw(uint16_t buf[], uint8_t len, uint8_t hz)
 {
   enableIROut(hz);
-  for (int i = 0; i < len; i++) {
+  for (uint8_t i = 0; i < len; i++) {
     if (i & 1) {
       space(buf[i]);
     } 
@@ -123,14 +123,14 @@ IRsend::sendRaw(unsigned int buf[], int len, int hz)
 
 // Note: first bit must be a one (start bit)
 void 
-IRsend::sendRC5(unsigned long data, int nbits)
+IRsend::sendRC5(uint32_t data, uint8_t nbits)
 {
   enableIROut(36);
   data = data << (32 - nbits);
   mark(RC5_T1); // First start bit
   space(RC5_T1); // Second start bit
   mark(RC5_T1); // Second start bit
-  for (int i = 0; i < nbits; i++) {
+  for (uint8_t i = 0; i < nbits; i++) {
     if (data & TOPBIT) {
       space(RC5_T1); // 1 is space, then mark
       mark(RC5_T1);
@@ -149,7 +149,7 @@ IRsend::sendRC5(unsigned long data, int nbits)
 
 // Caller needs to take care of flipping the toggle bit
 void 
-IRsend::sendRC6(unsigned long data, int nbits)
+IRsend::sendRC6(uint32_t data, uint8_t nbits)
 {
   enableIROut(36);
   data = data << (32 - nbits);
@@ -157,8 +157,8 @@ IRsend::sendRC6(unsigned long data, int nbits)
   space(RC6_HDR_SPACE);
   mark(RC6_T1); // start bit
   space(RC6_T1);
-  int t;
-  for (int i = 0; i < nbits; i++) {
+  uint16_t t;
+  for (uint8_t i = 0; i < nbits; i++) {
     if (i == 3) {
       // double-wide trailer bit
       t = 2 * RC6_T1;
@@ -184,7 +184,7 @@ IRsend::sendRC6(unsigned long data, int nbits)
 
 
 void 
-IRsend::mark(int time) 
+IRsend::mark(uint16_t time) 
 {
   // Sends an IR mark for the specified number of microseconds.
   // The mark output is modulated at the PWM frequency.
@@ -197,7 +197,7 @@ IRsend::mark(int time)
 
 /* Leave pin off for time (given in microseconds) */
 void 
-IRsend::space(int time) 
+IRsend::space(uint16_t time) 
 {
   // Sends an IR space for the specified number of microseconds.
   // A space is no output, so the PWM output is disabled.
@@ -209,7 +209,7 @@ IRsend::space(int time)
 
 
 void 
-IRsend::enableIROut(int khz) 
+IRsend::enableIROut(uint8_t khz) 
 {
   // Enables IR output.  The khz value controls the modulation frequency in kilohertz.
   // The IR output will be on pin 3 (OC2B).
@@ -245,7 +245,7 @@ IRsend::enableIROut(int khz)
 
 
 
-IRrecv::IRrecv(int recvpin)
+IRrecv::IRrecv(uint8_t recvpin)
 {
   irparams.recvpin = recvpin;
   irparams.blinkflag = 0;
@@ -291,7 +291,7 @@ IRrecv::enableIRIn()
 
 // enable/disable blinking of pin 13 on IR processing
 void 
-IRrecv::blink13(int blinkflag)
+IRrecv::blink13(uint8_t blinkflag)
 {
   irparams.blinkflag = blinkflag;
   if (blinkflag)
@@ -408,7 +408,7 @@ IRrecv::resume()
 // Decodes the received IR message
 // Returns 0 if no data ready, 1 if data ready.
 // Results of decoding are stored in results
-int 
+uint8_t 
 IRrecv::decode(decode_results *results) 
 {
   results->rawbuf = irparams.rawbuf;
@@ -418,7 +418,7 @@ IRrecv::decode(decode_results *results)
     return ERR;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
   Serial.println("Attempting NEC decode");
 #endif
 
@@ -426,7 +426,7 @@ IRrecv::decode(decode_results *results)
     return DECODED;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
   Serial.println("Attempting Sony decode");
 #endif
 
@@ -434,7 +434,7 @@ IRrecv::decode(decode_results *results)
     return DECODED;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
   Serial.println("Attempting RC5 decode");
 #endif  
 
@@ -442,7 +442,7 @@ IRrecv::decode(decode_results *results)
     return DECODED;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
   Serial.println("Attempting RC6 decode");
 #endif 
 
@@ -459,11 +459,11 @@ IRrecv::decode(decode_results *results)
 
 
 
-long 
+uint16_t 
 IRrecv::decodeNEC(decode_results *results) 
 {
-  long data = 0;
-  int offset = 1; // Skip first space
+  uint16_t data = 0;
+  uint8_t offset = 1; // Skip first space
   // Initial mark
   if (!MATCH_MARK(results->rawbuf[offset], NEC_HDR_MARK)) {
     return ERR;
@@ -486,7 +486,7 @@ IRrecv::decodeNEC(decode_results *results)
     return ERR;
   }
   offset++;
-  for (int i = 0; i < NEC_BITS; i++) {
+  for (uint8_t i = 0; i < NEC_BITS; i++) {
     if (!MATCH_MARK(results->rawbuf[offset], NEC_BIT_MARK)) {
       return ERR;
     }
@@ -511,14 +511,14 @@ IRrecv::decodeNEC(decode_results *results)
 
 
 
-long 
+uint16_t 
 IRrecv::decodeSony(decode_results *results) 
 {
-  long data = 0;
+  uint16_t data = 0;
   if (irparams.rawlen < 2 * SONY_BITS + 2) {
     return ERR;
   }
-  int offset = 1; // Skip first space
+  uint8_t offset = 1; // Skip first space
   // Initial mark
   if (!MATCH_MARK(results->rawbuf[offset], SONY_HDR_MARK)) {
     return ERR;
@@ -564,17 +564,17 @@ IRrecv::decodeSony(decode_results *results)
 // t1 is the time interval for a single bit in microseconds.
 // Returns -1 for error (measured time interval is not a multiple of t1).
 uint8_t 
-IRrecv::getRClevel(decode_results *results, int *offset, int *used, int t1) 
+IRrecv::getRClevel(decode_results *results, uint8_t *offset, uint8_t *used, uint8_t t1) 
 {
   if (*offset >= results->rawlen) {
     // After end of recorded buffer, assume SPACE.
     return SPACE;
   }
-  int width = results->rawbuf[*offset];
-  int val = ((*offset) % 2) ? MARK : SPACE;
-  int correction = (val == MARK) ? MARK_EXCESS : - MARK_EXCESS;
+  uint16_t width = results->rawbuf[*offset];
+  uint8_t val = ((*offset) % 2) ? MARK : SPACE;
+  uint8_t correction = (val == MARK) ? MARK_EXCESS : - MARK_EXCESS;
 
-  int avail;
+  uint8_t avail;
   if (MATCH(width, t1 + correction)) {
     avail = 1;
   } 
@@ -593,7 +593,7 @@ IRrecv::getRClevel(decode_results *results, int *offset, int *used, int t1)
     *used = 0;
     (*offset)++;
   }
-#ifdef DEBUG
+#ifdef DEBUG_IR_ADDON
   if (val == MARK) {
     Serial.println("MARK");
   } 
@@ -607,23 +607,23 @@ IRrecv::getRClevel(decode_results *results, int *offset, int *used, int t1)
 
 
 
-long 
+uint16_t 
 IRrecv::decodeRC5(decode_results *results) 
 {
   if (irparams.rawlen < MIN_RC5_SAMPLES + 2) {
     return ERR;
   }
-  int offset = 1; // Skip gap space
-  long data = 0;
-  int used = 0;
+  uint8_t offset = 1; // Skip gap space
+  uint16_t data = 0;
+  uint8_t used = 0;
   // Get start bits
   if (getRClevel(results, &offset, &used, RC5_T1) != MARK) return ERR;
   if (getRClevel(results, &offset, &used, RC5_T1) != SPACE) return ERR;
   if (getRClevel(results, &offset, &used, RC5_T1) != MARK) return ERR;
-  int nbits;
+  uint8_t nbits;
   for (nbits = 0; offset < irparams.rawlen; nbits++) {
-    int levelA = getRClevel(results, &offset, &used, RC5_T1); 
-    int levelB = getRClevel(results, &offset, &used, RC5_T1);
+    uint8_t levelA = getRClevel(results, &offset, &used, RC5_T1); 
+    uint8_t levelB = getRClevel(results, &offset, &used, RC5_T1);
     if (levelA == SPACE && levelB == MARK) {
       // 1 bit
       data = (data << 1) | 1;
@@ -646,13 +646,13 @@ IRrecv::decodeRC5(decode_results *results)
 
 
 
-long 
+uint16_t 
 IRrecv::decodeRC6(decode_results *results) 
 {
   if (results->rawlen < MIN_RC6_SAMPLES) {
     return ERR;
   }
-  int offset = 1; // Skip first space
+  uint8_t offset = 1; // Skip first space
   // Initial mark
   if (!MATCH_MARK(results->rawbuf[offset], RC6_HDR_MARK)) {
     return ERR;
@@ -662,14 +662,14 @@ IRrecv::decodeRC6(decode_results *results)
     return ERR;
   }
   offset++;
-  long data = 0;
-  int used = 0;
+  uint16_t data = 0;
+  uint8_t used = 0;
   // Get start bit (1)
   if (getRClevel(results, &offset, &used, RC6_T1) != MARK) return ERR;
   if (getRClevel(results, &offset, &used, RC6_T1) != SPACE) return ERR;
-  int nbits;
+  uint8_t nbits;
   for (nbits = 0; offset < results->rawlen; nbits++) {
-    int levelA, levelB; // Next two levels
+    uint8_t levelA, levelB; // Next two levels
     levelA = getRClevel(results, &offset, &used, RC6_T1); 
     if (nbits == 3) {
       // T bit is double wide; make sure second half matches

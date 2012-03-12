@@ -26,11 +26,10 @@
 // memory is tight and the controller might crash if all
 // info is enabled.
 //
-//#define DEBUG        // enables serial and prints out memory
+#define DEBUG        // enables serial and prints out memory
 //#define DEBUG_PUMP   // pump related
 //#define DEBUG_MENU   // menu related
 //#define DEUBG_IR     // IR related
-
 
 #include <Flash.h> //from http://arduiniana.org/libraries/flash/
 #include <Wire.h>
@@ -99,10 +98,10 @@ uint32_t calTime           =   0; // Store time it took to move X amount of wate
 float rate                 = 0.0; // rate for current pump
 boolean calibrated       = false; // flag that we've gone through calibration
 
-char * calibration_instructions[6] = {
-            "Prepare 250ml water.","Prime line.         ",
-            "Submerge line input.","Press OK to start.  ",
-            "Press OK when all   ","water is gone       "};
+FLASH_STRING (calibration_instructions,
+            "Prepare 250ml water.""Prime line.         "
+            "Submerge line input.""Press OK to start.  "
+            "Press OK when all   ""water is gone       ");
     
 boolean first = true;
 // this is a temporary holding area that we write to, key by key; and then dump all at once when the user finishes the last one
@@ -111,19 +110,19 @@ decode_results results;
 
 // this is used in learn-mode, to prompt the user and assign enums to internal functions
 struct _ir_keys {
-  long hex;
+  uint16_t hex;
   uint8_t internal_funct_code;
-  char name[16];
+  char name[7];
 }
 
 ir_keys[MAX_FUNCTS+1] = {
   { 0x00, K_MENU,          "Menu"           }
- ,{ 0x00, K_UP,            "Up Arrow"       }
- ,{ 0x00, K_DOWN,          "Down Arrow"     }
- ,{ 0x00, K_LEFT,          "Left Arrow"     }
- ,{ 0x00, K_RIGHT,         "Right Arrow"    }
- ,{ 0x00, K_OK,            "Confirm/Select" }
- ,{ 0x00, K_CANCEL,        "Back/Cancel"    }
+ ,{ 0x00, K_UP,            "Up"       }
+ ,{ 0x00, K_DOWN,          "Down"     }
+ ,{ 0x00, K_LEFT,          "Left"     }
+ ,{ 0x00, K_RIGHT,         "Right"    }
+ ,{ 0x00, K_OK,            "OK" }
+ ,{ 0x00, K_CANCEL,        "Cancel"    }
  ,{ 0x00, K_KEY_SENTINEL,  "NULL"           }
 };
 
@@ -137,44 +136,67 @@ MCP23XX lcd_mcp = MCP23XX(LCD_MCP_DEV_ADDR);
 //Init the LCD
 LCDI2C4Bit lcd = LCDI2C4Bit(LCD_MCP_DEV_ADDR, LCD_PHYS_LINES, LCD_PHYS_ROWS, PWM_BACKLIGHT_PIN);
 
-//Init the Pumps
-//Pump(pin number, ml/s, daily dose, dsecription);
-Pump * p1 = new Pump(3,1,0,"Pump 1");
-Pump * p2 = new Pump(5,0,0,"Pump 2");
-Pump * p3 = new Pump(6,0,0,"Pump 3");
-Pump * p4 = new Pump(11,0,0,"Pump 4");
-Pump * p5 = new Pump(10,0,0,"Pump 5");
-Pump * currentPump;
+
+
+//define menu strings in progmem
+char mi_pump1_string[] = "Pump 1";
+char mi_pump2_string[] = "Pump 2";
+char mi_pump3_string[] = "Pump 3";
+char mi_pump4_string[] = "Pump 4";
+char mi_pump5_string[] = "Pump 5";
+const char mi_set_string[] = "Set";
+const char mi_review_string[] = "Review";
+const char mi_calibrate_string[] = "Calibrate";
+const char mi_dc_string[] = "Duty Cycle";
+const char mi_settings_string[] = "Settings";
+const char mi_clock_string[] = "Clock";
+const char mi_display_sleep_string[] = "Display Sleep";
+const char mi_ato_string[] = "ATO";
+const char mi_ato_set_string[] = "Set Timeout";
+
 
 //this controls the menu backend and the event generation
 MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
 //beneath is list of menu items needed to build the menu
-MenuItem settings = MenuItem("Settings");
-MenuItem mi_clock = MenuItem("Clock");
-MenuItem mi_sleep = MenuItem("Display Sleep");
-MenuItem mi_pump1 = MenuItem("Pump 1");
-MenuItem mi_pump1_review = MenuItem("Review");
-MenuItem mi_pump1_set = MenuItem("Set");
-MenuItem mi_pump1_calibrate = MenuItem("Calibrate");
-MenuItem mi_pump2 = MenuItem("Pump 2");
-MenuItem mi_pump2_review = MenuItem("Review");
-MenuItem mi_pump2_set = MenuItem("Set");
-MenuItem mi_pump2_calibrate = MenuItem("Calibrate");
-MenuItem mi_pump3 = MenuItem("Pump 3");
-MenuItem mi_pump3_review = MenuItem("Review");
-MenuItem mi_pump3_set = MenuItem("Set");
-MenuItem mi_pump3_calibrate = MenuItem("Calibrate");
-MenuItem mi_pump4 = MenuItem("Pump 4");
-MenuItem mi_pump4_review = MenuItem("Review");
-MenuItem mi_pump4_set = MenuItem("Set");
-MenuItem mi_pump4_calibrate = MenuItem("Calibrate");
-MenuItem mi_pump5 = MenuItem("Pump 5");
-MenuItem mi_pump5_review = MenuItem("Review");
-MenuItem mi_pump5_set = MenuItem("Set");
-MenuItem mi_pump5_calibrate = MenuItem("Calibrate");
-MenuItem mi_ATO = MenuItem("ATO");
-MenuItem mi_ATO_set = MenuItem("Set timeot");
+MenuItem settings = MenuItem(mi_settings_string);
+MenuItem mi_clock = MenuItem(mi_clock_string);
+MenuItem mi_sleep = MenuItem(mi_display_sleep_string);
+MenuItem mi_pump1 = MenuItem(mi_pump1_string);
+MenuItem mi_pump1_review = MenuItem(mi_review_string);
+MenuItem mi_pump1_set = MenuItem(mi_set_string);
+MenuItem mi_pump1_calibrate = MenuItem(mi_calibrate_string);
+MenuItem mi_pump1_dc = MenuItem(mi_dc_string);
+MenuItem mi_pump2 = MenuItem(mi_pump2_string);
+MenuItem mi_pump2_review = MenuItem(mi_review_string);
+MenuItem mi_pump2_set = MenuItem(mi_set_string);
+MenuItem mi_pump2_calibrate = MenuItem(mi_calibrate_string);
+MenuItem mi_pump2_dc = MenuItem(mi_dc_string);
+MenuItem mi_pump3 = MenuItem(mi_pump3_string);
+MenuItem mi_pump3_review = MenuItem(mi_review_string);
+MenuItem mi_pump3_set = MenuItem(mi_set_string);
+MenuItem mi_pump3_calibrate = MenuItem(mi_calibrate_string);
+MenuItem mi_pump3_dc = MenuItem(mi_dc_string);
+MenuItem mi_pump4 = MenuItem(mi_pump4_string);
+MenuItem mi_pump4_review = MenuItem(mi_review_string);
+MenuItem mi_pump4_set = MenuItem(mi_set_string);
+MenuItem mi_pump4_calibrate = MenuItem(mi_calibrate_string);
+MenuItem mi_pump4_dc = MenuItem(mi_dc_string);
+MenuItem mi_pump5 = MenuItem(mi_pump5_string);
+MenuItem mi_pump5_review = MenuItem(mi_review_string);
+MenuItem mi_pump5_set = MenuItem(mi_set_string);
+MenuItem mi_pump5_calibrate = MenuItem(mi_calibrate_string);
+MenuItem mi_pump5_dc = MenuItem(mi_dc_string);
+MenuItem mi_ATO = MenuItem(mi_ato_string);
+MenuItem mi_ATO_set = MenuItem(mi_ato_set_string);
 
+//Init the Pumps
+//Pump(pin number, ml/s, daily dose, dsecription);
+Pump * p1 = new Pump(3,1,0,mi_pump1_string);
+Pump * p2 = new Pump(5,0,0,mi_pump2_string);
+Pump * p3 = new Pump(6,0,0,mi_pump3_string);
+Pump * p4 = new Pump(11,0,0,mi_pump4_string);
+Pump * p5 = new Pump(10,0,0,mi_pump5_string);
+Pump * currentPump;
 
 IRrecv irrecv(IR_PIN);
 
@@ -335,6 +357,7 @@ void run_sec( void ){
 //  // It is midnight. Might be useful for something in the future :)
 //  if (currentTime.hour == 0 && currentTime.min == 0 && currentTime.sec == 0){
 //  }
+
       
   do_ATO();
   if (global_mode != 2){ // we don't want dosing to occur while we use the pumps for calibration
@@ -401,6 +424,9 @@ void do_DOSING(Pump *pump){
 /*******************************/
 void update_clock(uint8_t x, uint8_t y){
   if (global_mode == 0 || global_mode == 1 || global_mode == 5){
+    
+    lcd.cursorTo(2,15);
+    lcd.print(availableMemory());
     lcd.cursorTo(x,y);
     lcd.print(rtc.getTimeStr());
     lcd.print(F("  "));
@@ -580,26 +606,6 @@ long get_input_key( void ) {
   }
 }
 
-
-/**************************************/
-/****** SET PUMP pump TO PWM val ******/
-/**************************************/
-void update_pump(uint8_t pump, uint8_t val){
-  //      pinMode(pumps[pump], val);
-  //      char tmpStr[5];
-  //      sprintf(tmpStr,"%d:%03d ",pump+1, val);
-//  if (pump*7 < 20){
-//    lcd.cursorTo(0,pump*7);
-//  }
-//  else{
-//    lcd.cursorTo(1,(pump-3)*7+4);
-//  }
-//  lcd.print(pump+1);
-//  lcd.print(":");
-//  lcd.print(val);
-//  lcd.print("  ");
-}
-
 /********************************************/
 /****** SETUP LCD FOR pump CALIBRATION ******/
 /********************************************/
@@ -612,7 +618,7 @@ void pump_menu_cal(Pump *pump){
 #ifdef DEBUG_MENU
   Serial.print(F("Setting curentTemp to "));
   Serial.print(pump->getDescription());
-  Serial.print("->");
+  Serial.print(F("->"));
   Serial.println(currentPump->getDescription());
 #endif
   lcd.clear();
@@ -634,9 +640,13 @@ void update_cal_screen(){
   lcd.clear_L4();   
   if (calPage !=3){
     lcd.cursorTo(1,0);
-    lcd.print(calibration_instructions[calPage*2]);  
+    for (uint8_t i = calPage*2*20; i < calPage*2*20+20; i++){
+      lcd.write(calibration_instructions[i]);  
+    }
     lcd.cursorTo(2,0);
-    lcd.print(calibration_instructions[calPage*2+1]);
+    for (uint8_t i = (calPage*2+1)*20; i < (calPage*2+1)*20+20; i++){
+      lcd.write(calibration_instructions[i]);  
+    }
     if (calPage != 0 && first){
       lcd.cursorTo(3,0);
       lcd.print(F("<Previous"));
@@ -886,7 +896,7 @@ void prep_review_pump(Pump *pump){
   lcd.cursorTo(2,0);
   lcd.print(F("daily dose: "));
   lcd.print((int)(pump->getDose()*pump->getMlm()));
-  lcd.print("ml");
+  lcd.print(F("ml"));
   handle_review_pump();
 }
 /*************************/
@@ -1301,65 +1311,95 @@ void menuUseEvent(MenuUseEvent used)
       lcd.print(F("HH:MM:SS DD/MM/YY DW"));
       set_time();
     }
-    // pump1 setup
-    else if(used.item == mi_pump1_set && *left == mi_pump1){
-      pump_menu_set(p1);
+    else if (*left == mi_pump1){
+      // pump1 setup
+      if(used.item == mi_pump1_set){
+        pump_menu_set(p1);
+      }
+      // pump1 calibration
+      else if(used.item == mi_pump1_calibrate){
+        pump_menu_cal(p1);
+      }
+      // pump1 review
+      else if(used.item == mi_pump1_review){
+        prep_review_pump(p1);
+      }
+      // pump1 duty cycle
+      else if(used.item == mi_pump1_dc){
+//        prep_review_pump(p1);
+      }
     }
-    // pump2 setup
-    else if(used.item == mi_pump2_set && *left == mi_pump2){
-      pump_menu_set(p2);
+    else if (*left == mi_pump2){
+      // pump2 setup
+      if(used.item == mi_pump2_set){
+        pump_menu_set(p2);
+      }
+      // pump2 calibration
+      else if(used.item == mi_pump2_calibrate){
+        pump_menu_cal(p2);
+      }
+      // pump2 review
+      else if(used.item == mi_pump2_review){
+        prep_review_pump(p2);
+      }
+      // pump2 duty cycle
+      else if(used.item == mi_pump2_dc){
+//        prep_review_pump(p2);
+      }
     }
-    // pump3 setup
-    else if(used.item == mi_pump3_set && *left == mi_pump3){
-      pump_menu_set(p3);
+    else if (*left == mi_pump3){
+      // pump3 setup
+      if(used.item == mi_pump3_set){
+        pump_menu_set(p3);
+      }
+      // pump3 calibration
+      else if(used.item == mi_pump3_calibrate){
+        pump_menu_cal(p3);
+      }
+      // pump3 review
+      else if(used.item == mi_pump3_review){
+        prep_review_pump(p3);
+      }
+      // pump3 duty cycle
+      else if(used.item == mi_pump3_dc){
+//        prep_review_pump(p3);
+      }
     }
-    // pump4 setup
-    else if(used.item == mi_pump4_set && *left == mi_pump4){
-      pump_menu_set(p4);
+    else if (*left == mi_pump4){
+      // pump4 setup
+      if(used.item == mi_pump4_set){
+        pump_menu_set(p4);
+      }
+      // pump4 calibration
+      else if(used.item == mi_pump4_calibrate){
+        pump_menu_cal(p4);
+      }
+      // pump4 review
+      else if(used.item == mi_pump4_review){
+        prep_review_pump(p4);
+      }
+      // pump4 duty cycle
+      else if(used.item == mi_pump4_dc){
+//        prep_review_pump(p4);
+      }
     }
-    // pump5 setup
-    else if(used.item == mi_pump5_set && *left == mi_pump5){
-      pump_menu_set(p5);
-    }
-    // pump1 calibration
-    else if(used.item == mi_pump1_calibrate && *left == mi_pump1){
-      pump_menu_cal(p1);
-    }
-    // pump2 calibration
-    else if(used.item == mi_pump2_calibrate && *left == mi_pump2){
-      pump_menu_cal(p2);
-    }
-    // pump3 calibration
-    else if(used.item == mi_pump3_calibrate && *left == mi_pump3){
-      pump_menu_cal(p3);
-    }
-    // pump4 calibration
-    else if(used.item == mi_pump4_calibrate && *left == mi_pump4){
-      pump_menu_cal(p4);
-    }
-    // pump5 calibration
-    else if(used.item == mi_pump5_calibrate && *left == mi_pump5){
-      pump_menu_cal(p5);
-    }
-    // pump1 review
-    else if(used.item == mi_pump1_review && *left == mi_pump1){
-      prep_review_pump(p1);
-    }
-    // pump2 review
-    else if(used.item == mi_pump2_review && *left == mi_pump2){
-      prep_review_pump(p2);
-    }
-    // pump3 review
-    else if(used.item == mi_pump3_review && *left == mi_pump3){
-      prep_review_pump(p3);
-    }
-    // pump4 review
-    else if(used.item == mi_pump4_review && *left == mi_pump4){
-      prep_review_pump(p4);
-    }
-    // pump5 review
-    else if(used.item == mi_pump5_review && *left == mi_pump5){
-      prep_review_pump(p5);
+    else if (*left == mi_pump5){
+      // pump5 setup
+      if(used.item == mi_pump5_set){
+        pump_menu_set(p5);
+      }
+      // pump5 calibration
+      else if(used.item == mi_pump5_calibrate){
+        pump_menu_cal(p5);
+      }
+      // pump5 review
+      else if(used.item == mi_pump5_review){
+        prep_review_pump(p5);
+      }
+      // pump5 duty cycle
+      else if(used.item == mi_pump5_dc){
+//        prep_review_pump(p5);
+      }
     }
     // Auto TopOff setup
     else if(used.item == mi_ATO_set){
@@ -1435,63 +1475,78 @@ void menuSetup()
   mi_pump1.addBefore(mi_pump2);
   mi_pump1.addAfter(settings);
   mi_pump1.addRight(mi_pump1_review);
+    mi_pump1_review.addAfter(mi_pump1_dc);
     mi_pump1_review.addBefore(mi_pump1_set);
-    mi_pump1_review.addAfter(mi_pump1_calibrate);
     mi_pump1_review.addLeft(mi_pump1);
-    mi_pump1_set.addBefore(mi_pump1_calibrate);
     mi_pump1_set.addAfter(mi_pump1_review);
+    mi_pump1_set.addBefore(mi_pump1_calibrate);
     mi_pump1_set.addLeft(mi_pump1);
     mi_pump1_calibrate.addAfter(mi_pump1_set);
-    mi_pump1_calibrate.addBefore(mi_pump1_review);
+    mi_pump1_calibrate.addBefore(mi_pump1_dc);
     mi_pump1_calibrate.addLeft(mi_pump1);
+    mi_pump1_dc.addAfter(mi_pump1_calibrate);
+    mi_pump1_dc.addBefore(mi_pump1_review);
+    mi_pump1_dc.addLeft(mi_pump1);
   mi_pump2.addBefore(mi_pump3);
   mi_pump2.addAfter(mi_pump1);
   mi_pump2.addRight(mi_pump2_review);
+    mi_pump2_review.addAfter(mi_pump2_dc);
     mi_pump2_review.addBefore(mi_pump2_set);
-    mi_pump2_review.addAfter(mi_pump2_calibrate);
     mi_pump2_review.addLeft(mi_pump2);
-    mi_pump2_set.addBefore(mi_pump2_calibrate);
     mi_pump2_set.addAfter(mi_pump2_review);
+    mi_pump2_set.addBefore(mi_pump2_calibrate);
     mi_pump2_set.addLeft(mi_pump2);
     mi_pump2_calibrate.addAfter(mi_pump2_set);
-    mi_pump2_calibrate.addBefore(mi_pump2_review);
+    mi_pump2_calibrate.addBefore(mi_pump2_dc);
     mi_pump2_calibrate.addLeft(mi_pump2);
+    mi_pump2_dc.addAfter(mi_pump2_calibrate);
+    mi_pump2_dc.addBefore(mi_pump2_review);
+    mi_pump2_dc.addLeft(mi_pump2);
   mi_pump3.addBefore(mi_pump4);
   mi_pump3.addAfter(mi_pump2);
   mi_pump3.addRight(mi_pump3_review);
+    mi_pump3_review.addAfter(mi_pump3_dc);
     mi_pump3_review.addBefore(mi_pump3_set);
-    mi_pump3_review.addAfter(mi_pump3_calibrate);
     mi_pump3_review.addLeft(mi_pump3);
-    mi_pump3_set.addBefore(mi_pump3_calibrate);
     mi_pump3_set.addAfter(mi_pump3_review);
+    mi_pump3_set.addBefore(mi_pump3_calibrate);
     mi_pump3_set.addLeft(mi_pump3);
     mi_pump3_calibrate.addAfter(mi_pump3_set);
-    mi_pump3_calibrate.addBefore(mi_pump3_review);
+    mi_pump3_calibrate.addBefore(mi_pump3_dc);
     mi_pump3_calibrate.addLeft(mi_pump3);
+    mi_pump3_dc.addAfter(mi_pump3_calibrate);
+    mi_pump3_dc.addBefore(mi_pump3_review);
+    mi_pump3_dc.addLeft(mi_pump3);
   mi_pump4.addBefore(mi_pump5);
   mi_pump4.addAfter(mi_pump3);
   mi_pump4.addRight(mi_pump4_review);
+    mi_pump4_review.addAfter(mi_pump4_dc);
     mi_pump4_review.addBefore(mi_pump4_set);
-    mi_pump4_review.addAfter(mi_pump4_calibrate);
     mi_pump4_review.addLeft(mi_pump4);
-    mi_pump4_set.addBefore(mi_pump4_calibrate);
     mi_pump4_set.addAfter(mi_pump4_review);
+    mi_pump4_set.addBefore(mi_pump4_calibrate);
     mi_pump4_set.addLeft(mi_pump4);
     mi_pump4_calibrate.addAfter(mi_pump4_set);
-    mi_pump4_calibrate.addBefore(mi_pump4_review);
+    mi_pump4_calibrate.addBefore(mi_pump4_dc);
     mi_pump4_calibrate.addLeft(mi_pump4);
+    mi_pump4_dc.addAfter(mi_pump4_calibrate);
+    mi_pump4_dc.addBefore(mi_pump4_review);
+    mi_pump4_dc.addLeft(mi_pump4);
   mi_pump5.addBefore(mi_ATO);
   mi_pump5.addAfter(mi_pump4);
   mi_pump5.addRight(mi_pump5_review);
+    mi_pump5_review.addAfter(mi_pump5_dc);
     mi_pump5_review.addBefore(mi_pump5_set);
-    mi_pump5_review.addAfter(mi_pump5_calibrate);
     mi_pump5_review.addLeft(mi_pump5);
-    mi_pump5_set.addBefore(mi_pump5_calibrate);
     mi_pump5_set.addAfter(mi_pump5_review);
+    mi_pump5_set.addBefore(mi_pump5_calibrate);
     mi_pump5_set.addLeft(mi_pump5);
     mi_pump5_calibrate.addAfter(mi_pump5_set);
-    mi_pump5_calibrate.addBefore(mi_pump5_review);
+    mi_pump5_calibrate.addBefore(mi_pump5_dc);
     mi_pump5_calibrate.addLeft(mi_pump5);
+    mi_pump5_dc.addAfter(mi_pump5_calibrate);
+    mi_pump5_dc.addBefore(mi_pump5_review);
+    mi_pump5_dc.addLeft(mi_pump5);
   mi_ATO.addBefore(settings);
   mi_ATO.addAfter(mi_pump5);
   mi_ATO.addRight(mi_ATO_set);
@@ -1502,7 +1557,7 @@ void menuSetup()
 
 int availableMemory() 
 {
-  int size = 1024;
+  uint16_t size = 1024;
   byte *buf;
   while ((buf = (byte *) malloc(--size)) == NULL);
   free(buf);
