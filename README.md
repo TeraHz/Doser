@@ -38,7 +38,7 @@ Features
 
 *	**Really Bare Bones Board (RBBB) Arduino**
 
-	`Doser` is using a RBBB Arduino from [Modern Device](http://shop.moderndevice.com/products/rbbb-kit)
+	`Doser` is using a 5V RBBB Arduino from [Modern Device](http://shop.moderndevice.com/products/rbbb-kit)
 	for its brain. 
 
 Files
