@@ -24,11 +24,12 @@
 #include "EEPROMAnything.h"
 
 
-Pump::Pump( uint8_t pin, uint8_t mlm, uint16_t dose, char* desc) {
+Pump::Pump( uint8_t pin, float mlm, uint16_t dose, uint8_t dc, char * desc) {
   pinMode(pin, OUTPUT);
   this->_pin = pin;
   this->_mlm = mlm;
   this->_dose = dose;
+  this->_dc = dc;
   this->_desc = desc;
   this->_counter = 0;
 }
@@ -90,15 +91,25 @@ void Pump::stopDosing(){
   analogWrite(this->_pin, 0);
 }
 
+uint8_t Pump::getDC( void ){
+  return this->_dc;
+}
+
+void Pump::setDC( uint8_t dc ){
+  this->_dc = dc;
+}
+  
 void Pump::save(){
   EEPROM_writeAnything(this->_ee, this->_mlm);
   EEPROM_writeAnything(this->_ee+5, this->_dose);
-  EEPROM_writeAnything(this->_ee+10, this->_desc);
+  EEPROM_writeAnything(this->_ee+10, this->_dc);
+  EEPROM_writeAnything(this->_ee+15, this->_desc);
 }
 
 void Pump::load(){
   EEPROM_readAnything(this->_ee, this->_mlm);
   EEPROM_readAnything(this->_ee+5, this->_dose);
-  EEPROM_readAnything(this->_ee+10, this->_desc);
+  EEPROM_readAnything(this->_ee+10, this->_dc);
+  EEPROM_readAnything(this->_ee+15, this->_desc);
   
 }

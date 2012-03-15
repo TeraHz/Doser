@@ -57,7 +57,7 @@ MATCH_SPACE(int measured_ticks, int desired_us)
 
 
 void 
-IRsend::sendNEC(uint16_t data, uint8_t nbits)
+IRsend::sendNEC(uint32_t data, uint8_t nbits)
 {
   enableIROut(38);
   mark(NEC_HDR_MARK);
@@ -104,7 +104,7 @@ IRsend::sendSony(uint32_t data, uint8_t nbits)
 
 
 void 
-IRsend::sendRaw(uint16_t buf[], uint8_t len, uint8_t hz)
+IRsend::sendRaw(uint32_t buf[], uint8_t len, uint8_t hz)
 {
   enableIROut(hz);
   for (uint8_t i = 0; i < len; i++) {
@@ -462,7 +462,7 @@ IRrecv::decode(decode_results *results)
 uint16_t 
 IRrecv::decodeNEC(decode_results *results) 
 {
-  uint16_t data = 0;
+  uint32_t data = 0;
   uint8_t offset = 1; // Skip first space
   // Initial mark
   if (!MATCH_MARK(results->rawbuf[offset], NEC_HDR_MARK)) {
@@ -514,7 +514,7 @@ IRrecv::decodeNEC(decode_results *results)
 uint16_t 
 IRrecv::decodeSony(decode_results *results) 
 {
-  uint16_t data = 0;
+  uint32_t data = 0;
   if (irparams.rawlen < 2 * SONY_BITS + 2) {
     return ERR;
   }
@@ -614,7 +614,7 @@ IRrecv::decodeRC5(decode_results *results)
     return ERR;
   }
   uint8_t offset = 1; // Skip gap space
-  uint16_t data = 0;
+  uint32_t data = 0;
   uint8_t used = 0;
   // Get start bits
   if (getRClevel(results, &offset, &used, RC5_T1) != MARK) return ERR;
@@ -662,7 +662,7 @@ IRrecv::decodeRC6(decode_results *results)
     return ERR;
   }
   offset++;
-  uint16_t data = 0;
+  uint32_t data = 0;
   uint8_t used = 0;
   // Get start bit (1)
   if (getRClevel(results, &offset, &used, RC6_T1) != MARK) return ERR;

@@ -31,7 +31,7 @@
 
 class Pump {
 public:
-  Pump( uint8_t pin, uint8_t mls, uint16_t dose, char * desc);
+  Pump( uint8_t pin, float mls, uint16_t dose, uint8_t dc, char * desc);
   ~Pump();
   uint8_t getPin( void );
   void setPin( uint8_t );
@@ -42,8 +42,10 @@ public:
   uint16_t getDose( void );
   void setDose( uint16_t );
   void setEE(uint16_t ee);
-  void startDosing();
-  void stopDosing();
+  void startDosing( void );
+  void stopDosing( void );
+  uint8_t getDC( void );
+  void setDC( uint8_t );
   void save();
   void load(); // make sure you call setEE before you load
   boolean isOn();
@@ -51,7 +53,8 @@ public:
 private:
   uint8_t _counter; // count 1 minute of dosing
   uint8_t _pin; // which digital pin controls the pump
-  float _mlm; // how many ml/s does the pump move
+  uint8_t _dc; // duty cycle 100%-0%
+  float _mlm; // how many ml/m does the pump move
   uint16_t _dose; // daily dose for the pump in ml
   char * _desc; // some descriptin
   uint16_t _ee; // location in EEPROM

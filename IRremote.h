@@ -73,9 +73,9 @@ class IRsend
 {
 public:
   IRsend() {}
-  void sendNEC(uint16_t data, uint8_t nbits);
+  void sendNEC(uint32_t data, uint8_t nbits);
   void sendSony(uint32_t data, uint8_t nbits);
-  void sendRaw(uint16_t buf[], uint8_t len, uint8_t hz);
+  void sendRaw(uint32_t buf[], uint8_t len, uint8_t hz);
   void sendRC5(uint32_t data, uint8_t nbits);
   void sendRC6(uint32_t data, uint8_t nbits);
   // private:

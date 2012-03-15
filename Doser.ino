@@ -25,11 +25,11 @@
 // Debugging flags. Be careful when you enable debugging as 
 // memory is tight and the controller might crash if all
 // info is enabled.
-//
-#define DEBUG        // enables serial and prints out memory
+
+//#define DEBUG        // enables serial and prints out memory
 //#define DEBUG_PUMP   // pump related
 //#define DEBUG_MENU   // menu related
-//#define DEUBG_IR     // IR related
+//#define DEBUG_IR     // IR related
 
 #include <Flash.h> //from http://arduiniana.org/libraries/flash/
 #include <Wire.h>
@@ -58,7 +58,7 @@
 #define K_KEY_SENTINEL       7  // this must always be the last in the list
 #define MAX_FUNCTS                  K_KEY_SENTINEL
 #define EEPROM_SAVED        500  // EEPROM location to save
-#define EEPROM_SAVED_VALUE     3  // EEPROM value to check; change this to reinitialize the pumps
+#define EEPROM_SAVED_VALUE     2  // EEPROM value to check; change this to reinitialize the pumps
 
 /*
  * IFC = internal function codes
@@ -191,11 +191,11 @@ MenuItem mi_ATO_set = MenuItem(mi_ato_set_string);
 
 //Init the Pumps
 //Pump(pin number, ml/s, daily dose, dsecription);
-Pump * p1 = new Pump(3,1,0,mi_pump1_string);
-Pump * p2 = new Pump(5,0,0,mi_pump2_string);
-Pump * p3 = new Pump(6,0,0,mi_pump3_string);
-Pump * p4 = new Pump(11,0,0,mi_pump4_string);
-Pump * p5 = new Pump(10,0,0,mi_pump5_string);
+Pump * p1 = new Pump(3,31.12,0,100,"Pump 1");
+Pump * p2 = new Pump(5,30.99,0,100,"Pump 2");
+Pump * p3 = new Pump(6,33.78,0,100,"Pump 3");
+Pump * p4 = new Pump(11,38.86,0,100,"Pump 4");
+Pump * p5 = new Pump(10,34.64,0,100,"Pump 5");
 Pump * currentPump;
 
 IRrecv irrecv(IR_PIN);
@@ -336,7 +336,9 @@ void loop()
   else if (global_mode == 5){
     handle_review_pump();
   }//global_mode == 5
-  
+  else if (global_mode == 6){
+    handle_pump_dc();
+  }
   else{//we're somewhere else?
     
   }
@@ -424,9 +426,9 @@ void do_DOSING(Pump *pump){
 /*******************************/
 void update_clock(uint8_t x, uint8_t y){
   if (global_mode == 0 || global_mode == 1 || global_mode == 5){
-    
-    lcd.cursorTo(2,15);
-    lcd.print(availableMemory());
+//    
+//    lcd.cursorTo(2,15);
+//    lcd.print(availableMemory());
     lcd.cursorTo(x,y);
     lcd.print(rtc.getTimeStr());
     lcd.print(F("  "));
@@ -876,6 +878,139 @@ void cal_pump(){
   
 }
 
+/********************************/
+/****** PREPARE DUTY CYCLE ******/
+/********************************/
+void prep_pump_dc(Pump *pump){
+#ifdef DEBUG_PUMP
+  Serial.print(F("Working on pump "));
+  Serial.println(pump->getDescription());
+#endif
+  currentPump = pump;
+  global_mode = 6;
+  lcd.clear();
+  lcd.clear_L3();
+#ifdef DEBUG
+  Serial.print(F("Rate is:"));
+  Serial.println(pump->getDC());
+#endif
+  tempMinHolder = pump->getDC();
+  lcd.cursorTo(0,8);
+  lcd.print(F("Duty Cycle"));
+  update_effective_rate(tempMinHolder);
+  lcd.cursorTo(2,0);
+  handle_pump_dc();
+}
+
+/*****************************/
+/****** HELPER TO PRINT ******/
+/*****************************/
+void update_effective_rate(uint8_t percent){
+  lcd.cursorTo(2,0);
+  lcd.print(F("Eff rate:"));
+  lcd.print((float)((currentPump->getMlm())*(float)tempMinHolder/100.0));
+  lcd.print(F("     "));
+  lcd.cursorTo(3,0);
+  lcd.print(F("   "));
+  lcd.print((int)tempMinHolder);
+  lcd.print(F("%   ("));
+  lcd.print((uint8_t)(tempMinHolder*2.55));
+  lcd.print(F(")      "));
+}
+
+/*******************************/
+/****** HANDLE DUTY CYCLE ******/
+/*******************************/
+void handle_pump_dc( void ){
+  key = get_input_key();
+  if (key == 0) {
+    return;
+  }
+  delay(50);
+  // key = OK
+  if (key == ir_keys[K_OK].hex ) {
+    currentPump->setDC(tempMinHolder);
+    currentPump->save();
+    global_mode = 0;
+    lcd.clear();
+    first=true;
+  }
+
+  // key = Up
+  else if (key == ir_keys[K_UP].hex){
+    if (tempMinHolder < 99){
+      lcd.clear_L2();
+      tempMinHolder++;
+    } 
+    else{
+      tempMinHolder = 100;
+      lcd.cursorTo(1,0);
+      lcd.print(F("100% is the max value"));
+      delay(700);
+      lcd.clear_L2();
+    }
+    update_effective_rate(tempMinHolder);
+  }
+
+  // key = Down
+  else if (key == ir_keys[K_DOWN].hex){
+
+    if (tempMinHolder > 1){
+      tempMinHolder--;
+    }
+    else{
+      tempMinHolder = 0;
+      lcd.cursorTo(1,0);
+      lcd.print(F("Turning pump OFF    "));
+    }
+    update_effective_rate(tempMinHolder);
+  }
+
+  // key = Left
+  else if (key == ir_keys[K_LEFT].hex){
+    if (tempMinHolder > 10){
+      tempMinHolder-=10;
+    }
+    else{
+      tempMinHolder = 0;
+      lcd.cursorTo(1,0);
+      lcd.print(F("Turning pump OFF    "));
+    }
+    update_effective_rate(tempMinHolder);
+  }
+
+  // key = Right
+  else if (key == ir_keys[K_RIGHT].hex){ 
+   if (tempMinHolder <= 90){
+      tempMinHolder+=10;
+    } 
+    else{
+      tempMinHolder = 100;
+      lcd.cursorTo(1,0);
+      lcd.print(F("100% is the max value"));
+      delay(700);
+      lcd.clear_L2();
+    }
+    update_effective_rate(tempMinHolder);
+  }
+
+  // key = Cancel
+  else if (key == ir_keys[K_CANCEL].hex){
+    lcd.clear();
+    global_mode = 0;
+    delay (100);
+    first = true;
+  }else{
+#ifdef DEBUG_IR
+    Serial << F("unknown key") << "\n\r";
+#endif
+  }
+  
+  irrecv.resume();
+  delay(200);
+  
+}
+
 /*********************************/
 /****** PREPARE REVIEW PUMP ******/
 /*********************************/
@@ -899,6 +1034,7 @@ void prep_review_pump(Pump *pump){
   lcd.print(F("ml"));
   handle_review_pump();
 }
+
 /*************************/
 /****** REVIEW PUMP ******/
 /*************************/
@@ -1326,7 +1462,7 @@ void menuUseEvent(MenuUseEvent used)
       }
       // pump1 duty cycle
       else if(used.item == mi_pump1_dc){
-//        prep_review_pump(p1);
+        prep_pump_dc(p1);
       }
     }
     else if (*left == mi_pump2){
@@ -1344,7 +1480,7 @@ void menuUseEvent(MenuUseEvent used)
       }
       // pump2 duty cycle
       else if(used.item == mi_pump2_dc){
-//        prep_review_pump(p2);
+        prep_pump_dc(p2);
       }
     }
     else if (*left == mi_pump3){
@@ -1362,7 +1498,7 @@ void menuUseEvent(MenuUseEvent used)
       }
       // pump3 duty cycle
       else if(used.item == mi_pump3_dc){
-//        prep_review_pump(p3);
+        prep_pump_dc(p3);
       }
     }
     else if (*left == mi_pump4){
@@ -1380,7 +1516,7 @@ void menuUseEvent(MenuUseEvent used)
       }
       // pump4 duty cycle
       else if(used.item == mi_pump4_dc){
-//        prep_review_pump(p4);
+        prep_pump_dc(p4);
       }
     }
     else if (*left == mi_pump5){
@@ -1398,7 +1534,7 @@ void menuUseEvent(MenuUseEvent used)
       }
       // pump5 duty cycle
       else if(used.item == mi_pump5_dc){
-//        prep_review_pump(p5);
+        prep_pump_dc(p5);
       }
     }
     // Auto TopOff setup
