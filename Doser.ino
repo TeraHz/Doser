@@ -701,7 +701,7 @@ void pump_menu_set(Pump *pump){
   lcd.cursorTo(2,0);
   lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05u ml",pump->getDose()*pump->getMlm());
+  sprintf(tmp,"   %05u ml",pump->getDose()*pump->getMlm()*(float)currentPump->getDC()/100.0);
   lcd.print(tmp);
   set_pump();
 }
@@ -711,6 +711,8 @@ void pump_menu_set(Pump *pump){
 /**********************/
 void set_pump(){
   float mlm = currentPump->getMlm();
+  float factor = (float)currentPump->getDC()/100.0;
+  mlm = mlm*factor;
   key = get_input_key();
   if (key == 0) {
     return;
@@ -1022,11 +1024,14 @@ void prep_review_pump(Pump *pump){
   lcd.cursorTo(0,8);
   lcd.print(F("Review"));
   lcd.cursorTo(1,0);
-  lcd.print(F("ml per minute:"));
-  lcd.print(pump->getMlm());  
+  lcd.print(F("ml/m:"));
+  lcd.print(pump->getMlm());
+  lcd.print(F("   dc:"));
+  lcd.print(pump->getDC());
+  lcd.print(F("%"));
   lcd.cursorTo(2,0);
   lcd.print(F("daily dose: "));
-  lcd.print((int)(pump->getDose()*pump->getMlm()));
+  lcd.print((int)(pump->getDose()*pump->getMlm()*(float)pump->getDC()/100.0));
   lcd.print(F("ml"));
   handle_review_pump();
 }
