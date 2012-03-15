@@ -83,11 +83,15 @@ void Pump::setEE( uint16_t e ){
   this->_ee = e;
 }
 
-void Pump::startDosing(){
-  analogWrite(this->_pin, 255);
+void Pump::startDosing( void ){
+  analogWrite(this->_pin, (int)_dc*2.55);
 }
 
-void Pump::stopDosing(){
+void Pump::startDosing(uint8_t val){
+  analogWrite(this->_pin, val);
+}
+
+void Pump::stopDosing( void ){
   analogWrite(this->_pin, 0);
 }
 

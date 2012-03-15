@@ -832,7 +832,7 @@ void cal_pump(){
       }else{
         first = false;
         calibrated = false;
-        currentPump->startDosing();
+        currentPump->startDosing(255);
         calPage = 2;
         update_cal_screen();
       }
@@ -888,12 +888,8 @@ void prep_pump_dc(Pump *pump){
 #endif
   currentPump = pump;
   global_mode = 6;
-  lcd.clear();
-  lcd.clear_L3();
-#ifdef DEBUG
-  Serial.print(F("Rate is:"));
-  Serial.println(pump->getDC());
-#endif
+  lcd.clear_L2();
+  lcd.clear_L4();
   tempMinHolder = pump->getDC();
   lcd.cursorTo(0,8);
   lcd.print(F("Duty Cycle"));
@@ -909,13 +905,13 @@ void update_effective_rate(uint8_t percent){
   lcd.cursorTo(2,0);
   lcd.print(F("Eff rate:"));
   lcd.print((float)((currentPump->getMlm())*(float)tempMinHolder/100.0));
-  lcd.print(F("     "));
+  lcd.print(F("ml/m "));
   lcd.cursorTo(3,0);
   lcd.print(F("   "));
   lcd.print((int)tempMinHolder);
   lcd.print(F("%   ("));
   lcd.print((uint8_t)(tempMinHolder*2.55));
-  lcd.print(F(")      "));
+  lcd.print(F(")     "));
 }
 
 /*******************************/

@@ -43,6 +43,7 @@ public:
   void setDose( uint16_t );
   void setEE(uint16_t ee);
   void startDosing( void );
+  void startDosing( uint8_t );
   void stopDosing( void );
   uint8_t getDC( void );
   void setDC( uint8_t );
