@@ -81,6 +81,7 @@ uint16_t tempMinHolder     =   0; // this is used for holding the temp value in 
 char strTime[20];                 // temporary array for time output
 char tmp[20];                     // temporary array for random stuff
 uint8_t psecond            =   0; // Previous second
+uint16_t decond            =   0; // decond 0 - 14400 - 1/10th of a minute
 uint8_t backupTimer        =   0; // timer that will count seconds since the ATO started. 
 uint8_t backupMax          =  10; // max seconds for timer to run. If this is reached, kill the ATO. (adjust timer based on your pump output)
 uint8_t sPos               =   1; // position for setting
@@ -345,6 +346,7 @@ void loop()
   
   if (psecond != second){
       psecond = second;
+      decond = (uint16_t)((currentTime.hour*60*60+currentTime.min*60+currentTime.sec)/6); // should give us 10 values per minute 
       run_sec();
   }
   delay(50);
@@ -411,8 +413,9 @@ void do_DOSING(Pump *pump){
 #endif
 
   if (pump->isOn()){
-    uint8_t repeat = 1440/pump->getDose();
-    if ((currentTime.hour*60+currentTime.min)%repeat == 0){
+    uint16_t repeat = 14400/pump->getDose(); // how many times to dose daily 6sec at a time
+    
+    if (decond%repeat == 0){
       pump->startDosing();
     }else{
       pump->stopDosing();
@@ -687,6 +690,10 @@ void pump_menu_set(Pump *pump){
 #endif
   global_mode = 3;
   tempMinHolder = pump->getDose();
+  float mlm = pump->getMlm();
+  float factor = (float)pump->getDC()/100.0;
+  mlm = mlm*factor; // apply duty cycle
+  mlm = mlm/10; // dose for 6 seconds (1/10th of a minute)
   currentPump = pump;
 #ifdef DEBUG_MENU
   Serial.print(F("Setting curentTemp to "));
@@ -701,7 +708,7 @@ void pump_menu_set(Pump *pump){
   lcd.cursorTo(2,0);
   lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05u ml",pump->getDose()*pump->getMlm()*(float)currentPump->getDC()/100.0);
+  sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
   lcd.print(tmp);
   set_pump();
 }
@@ -712,7 +719,8 @@ void pump_menu_set(Pump *pump){
 void set_pump(){
   float mlm = currentPump->getMlm();
   float factor = (float)currentPump->getDC()/100.0;
-  mlm = mlm*factor;
+  mlm = mlm*factor; // apply duty cycle
+  mlm = mlm/10; // dose for 6 seconds (1/10th of a minute)
   key = get_input_key();
   if (key == 0) {
     return;
@@ -869,7 +877,7 @@ void cal_pump(){
     lcd.clear();
     global_mode = 0;
     first = true;
-    calibrated  = true;
+    calibrated  = false;
   }else{
 #ifdef DEBUG_IR
     Serial << F("unknown key") << "\n\r";
@@ -943,7 +951,7 @@ void handle_pump_dc( void ){
     else{
       tempMinHolder = 100;
       lcd.cursorTo(1,0);
-      lcd.print(F("100% is the max value"));
+      lcd.print(F("100% - the max value"));
       delay(700);
       lcd.clear_L2();
     }
@@ -985,7 +993,7 @@ void handle_pump_dc( void ){
     else{
       tempMinHolder = 100;
       lcd.cursorTo(1,0);
-      lcd.print(F("100% is the max value"));
+      lcd.print(F("100% - the max value"));
       delay(700);
       lcd.clear_L2();
     }
@@ -1031,7 +1039,7 @@ void prep_review_pump(Pump *pump){
   lcd.print(F("%"));
   lcd.cursorTo(2,0);
   lcd.print(F("daily dose: "));
-  lcd.print((int)(pump->getDose()*pump->getMlm()*(float)pump->getDC()/100.0));
+  lcd.print((int)(tempMinHolder*pump->getMlm()*(float)pump->getDC()/1000.0));
   lcd.print(F("ml"));
   handle_review_pump();
 }
