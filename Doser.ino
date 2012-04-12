@@ -27,6 +27,7 @@
 // info is enabled.
 
 //#define DEBUG        // enables serial and prints out memory
+//#define DEBUG_DOSE   // dosing related
 //#define DEBUG_PUMP   // pump related
 //#define DEBUG_MENU   // menu related
 //#define DEBUG_IR     // IR related
@@ -411,13 +412,28 @@ void do_DOSING(Pump *pump){
   Serial.print(F("Working on pump "));
   Serial.println(pump->getDescription());
 #endif
-
+#ifdef DEBUG_DOSE
+  Serial.print(pump->getDescription());
+  Serial.print(" ");
+#endif
   if (pump->isOn()){
-    uint16_t repeat = 14400/pump->getDose(); // how many times to dose daily 6sec at a time
     
+    uint16_t repeat = 14400/pump->getDose(); // how many times to dose daily 6sec at a time
+#ifdef DEBUG_DOSE
+  Serial.print(repeat);
+  Serial.print(" ");
+  Serial.print(decond);
+  Serial.print(" ");
+#endif    
     if (decond%repeat == 0){
+#ifdef DEBUG_DOSE
+  Serial.println("start");
+#endif
       pump->startDosing();
     }else{
+#ifdef DEBUG_DOSE
+  Serial.println(" stop");
+#endif
       pump->stopDosing();
     }
   }
@@ -708,7 +724,7 @@ void pump_menu_set(Pump *pump){
   lcd.cursorTo(2,0);
   lcd.print(F("Enter daily dose:"));  
   lcd.cursorTo(3,0);
-  sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
+  sprintf(tmp,"   %05lu ml",(unsigned long)(tempMinHolder*mlm));
   lcd.print(tmp);
   set_pump();
 }
@@ -726,6 +742,11 @@ void set_pump(){
     return;
   }
   delay(50);
+#ifdef DEBUG_DOSE
+Serial.print(factor);
+Serial.print(" ");
+Serial.println(mlm);
+#endif
   // key = OK
   if (key == ir_keys[K_OK].hex ) {
     currentPump->setDose(tempMinHolder);
@@ -737,20 +758,20 @@ void set_pump(){
 
   // key = Up
   else if (key == ir_keys[K_UP].hex){
-    if (tempMinHolder < 1440){
+    if (tempMinHolder < 14400){
       lcd.clear_L2();
       tempMinHolder++;
     } 
     else{
-      tempMinHolder = 1440;
+      tempMinHolder = 14400;
       lcd.cursorTo(1,0);
-      sprintf(tmp,"Pump max: %luml",(long)(mlm*1440));
+      sprintf(tmp,"Pump max: %luml",(unsigned long)(mlm*14400));
       lcd.print(tmp);
       delay(700);
       lcd.clear_L2();
     }
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
+    sprintf(tmp,"   %05lu ml",(unsigned long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
@@ -766,7 +787,7 @@ void set_pump(){
       lcd.print(F("Turning pump OFF    "));
     }
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
+    sprintf(tmp,"   %05lu ml",(unsigned long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
@@ -781,26 +802,26 @@ void set_pump(){
       lcd.print(F("Turning pump OFF    "));
     }
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
+    sprintf(tmp,"   %05lu ml",(unsigned long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
   // key = Right
   else if (key == ir_keys[K_RIGHT].hex){ 
-   if (tempMinHolder <= 1430){
+   if (tempMinHolder <= 14390){
       tempMinHolder+=10;
     } 
     else{
-      tempMinHolder = 1440;
+      tempMinHolder = 14400;
       lcd.cursorTo(1,0);
-      sprintf(tmp,"Pump max: %luml",(long)(mlm*1440));
+      sprintf(tmp,"Pump max: %luml",(unsigned long)(mlm*14400));
       lcd.print(tmp);
       delay(700);
       lcd.clear_L2();
     }
 
     lcd.cursorTo(3,0);
-    sprintf(tmp,"   %05lu ml",(long)(tempMinHolder*mlm));
+    sprintf(tmp,"   %05lu ml",(unsigned long)(tempMinHolder*mlm));
     lcd.print(tmp);
   }
 
