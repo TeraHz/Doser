@@ -737,6 +737,7 @@ void set_pump(){
   float factor = (float)currentPump->getDC()/100.0;
   mlm = mlm*factor; // apply duty cycle
   mlm = mlm/10; // dose for 6 seconds (1/10th of a minute)
+  uint16_t repeat = 14400/tempMinHolder; // how many times to dose daily 6sec at a time
   key = get_input_key();
   if (key == 0) {
     return;
@@ -759,8 +760,13 @@ Serial.println(mlm);
   // key = Up
   else if (key == ir_keys[K_UP].hex){
     if (tempMinHolder < 14400){
+      while (repeat <= (uint16_t)(14400/tempMinHolder)){
+         tempMinHolder++;
+       if (tempMinHolder == 14400){
+          break;
+        }
+      }
       lcd.clear_L2();
-      tempMinHolder++;
     } 
     else{
       tempMinHolder = 14400;
@@ -779,7 +785,12 @@ Serial.println(mlm);
   else if (key == ir_keys[K_DOWN].hex){
 
     if (tempMinHolder > 0){
-      tempMinHolder--;
+      while (repeat >= (uint16_t)(14400/tempMinHolder)){
+        tempMinHolder--;
+        if (tempMinHolder == 0){
+          break;
+        }
+      }
     }
     else{
       tempMinHolder = 0;
@@ -793,8 +804,8 @@ Serial.println(mlm);
 
   // key = Left
   else if (key == ir_keys[K_LEFT].hex){
-    if (tempMinHolder > 10){
-      tempMinHolder-=10;
+    if (tempMinHolder > 0){
+       tempMinHolder=0;
     }
     else{
       tempMinHolder = 0;
@@ -808,9 +819,9 @@ Serial.println(mlm);
 
   // key = Right
   else if (key == ir_keys[K_RIGHT].hex){ 
-   if (tempMinHolder <= 14390){
-      tempMinHolder+=10;
-    } 
+     if (tempMinHolder <= 14399){
+        tempMinHolder=14400;
+    }
     else{
       tempMinHolder = 14400;
       lcd.cursorTo(1,0);
