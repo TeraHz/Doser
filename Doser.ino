@@ -416,8 +416,6 @@ void do_DOSING(Pump *pump){
   Serial.print(pump->getDescription());
   Serial.print(" ");
 #endif
-  if (pump->isOn()){
-    
     uint16_t repeat = 14400/pump->getDose(); // how many times to dose daily 6sec at a time
 #ifdef DEBUG_DOSE
   Serial.print(repeat);
@@ -427,7 +425,7 @@ void do_DOSING(Pump *pump){
 #endif    
     if (decond%repeat == 0){
 #ifdef DEBUG_DOSE
-  Serial.println("start");
+  Serial.print("start ");
 #endif
       pump->startDosing();
     }else{
@@ -436,7 +434,6 @@ void do_DOSING(Pump *pump){
 #endif
       pump->stopDosing();
     }
-  }
 
 }
 

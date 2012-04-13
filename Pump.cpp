@@ -25,7 +25,7 @@
 
 
 Pump::Pump( uint8_t pin, float mlm, uint16_t dose, uint8_t dc, char * desc) {
-  pinMode(pin, OUTPUT);
+  pinMode(pin, OUTPUT); 
   this->_pin = pin;
   this->_mlm = mlm;
   this->_dose = dose;
@@ -83,8 +83,9 @@ void Pump::setEE( uint16_t e ){
   this->_ee = e;
 }
 
-void Pump::startDosing( void ){
-  analogWrite(this->_pin, (int)_dc*2.55);
+uint8_t Pump::startDosing( void ){
+  analogWrite(this->_pin, (uint8_t)(this->_dc*1.2+135));
+  return (uint8_t)(this->_dc*1.2+135);
 }
 
 void Pump::startDosing(uint8_t val){
